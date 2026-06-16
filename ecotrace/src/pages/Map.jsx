@@ -80,8 +80,9 @@ function PlaceCard({ place, emoji, index }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 }}
       className="glass-card p-4 flex items-start gap-3 hover:shadow-xl transition-all duration-200 cursor-pointer group no-underline"
+      aria-label={`${place.name} in ${place.city} — Get directions`}
     >
-      <div className="w-10 h-10 rounded-xl bg-forest-800/10 flex items-center justify-center text-xl shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-forest-800/10 flex items-center justify-center text-xl shrink-0" aria-hidden="true">
         {emoji}
       </div>
       <div className="flex-1 min-w-0">
@@ -90,11 +91,11 @@ function PlaceCard({ place, emoji, index }) {
         </div>
         <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mt-0.5">{place.address}</div>
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs text-gold-500 font-semibold">⭐ {place.rating}</span>
+          <span className="text-xs text-gold-500 font-semibold"><span aria-hidden="true">⭐</span> {place.rating}</span>
           <span className="badge bg-forest-800/10 dark:bg-cream-100/10 text-forest-700 dark:text-cream-200 text-xs">
             {place.city}
           </span>
-          <span className="text-xs text-forest-700/50 dark:text-cream-200/40 group-hover:text-forest-700 transition-colors">
+          <span className="text-xs text-forest-700/50 dark:text-cream-200/40 group-hover:text-forest-700 transition-colors" aria-hidden="true">
             Get directions →
           </span>
         </div>
@@ -115,6 +116,8 @@ export default function Map() {
   const [userPos, setUserPos] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const mapsKey = getMapsKey();
+
+  useEffect(() => { document.title = 'Eco Map | EcoTrace'; }, []);
 
   // Load Maps script
   useEffect(() => {
@@ -251,32 +254,33 @@ export default function Map() {
     <div className="min-h-screen pt-20 bg-cream-100 dark:bg-forest-900">
       <div className="max-w-6xl mx-auto px-4 py-4">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-          <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">Eco Map 🗺️</h1>
+          <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">Eco Map <span aria-hidden="true">🗺️</span></h1>
           <p className="text-forest-700/60 dark:text-cream-200/50 text-sm mt-1">Find sustainable places near you</p>
         </motion.div>
 
         {/* Category tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Place type filter">
           {PLACE_TYPES.map((pt) => (
             <button
               key={pt.id}
               onClick={() => handleCategoryClick(pt)}
               disabled={loading}
+              aria-pressed={activeType === pt.id}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
                 ${activeType === pt.id
                   ? 'bg-forest-800 text-cream-100 shadow-md'
                   : 'bg-forest-800/10 dark:bg-cream-100/10 text-forest-700 dark:text-cream-200 hover:bg-forest-800/20'
                 }`}
             >
-              <span>{pt.emoji}</span> {pt.label}
+              <span aria-hidden="true">{pt.emoji}</span> {pt.label}
             </button>
           ))}
-          {loading && <span className="flex items-center gap-1 text-sm text-forest-700/60 dark:text-cream-200/50">🌿 Searching…</span>}
+          {loading && <span className="flex items-center gap-1 text-sm text-forest-700/60 dark:text-cream-200/50" role="status"><span aria-hidden="true">🌿</span> Searching…</span>}
         </div>
 
         {apiError && (
-          <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-amber-700 dark:text-amber-300 text-sm">
-            ℹ️ {apiError}
+          <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-amber-700 dark:text-amber-300 text-sm" role="alert">
+            <span aria-hidden="true">ℹ️</span> {apiError}
           </div>
         )}
       </div>
@@ -285,13 +289,13 @@ export default function Map() {
       <div className="max-w-6xl mx-auto px-4 pb-12">
         {/* Map (shown when API works) */}
         {mapsKey && !useFallback && (
-          <div ref={mapRef} className="w-full rounded-2xl overflow-hidden mb-6" style={{ height: '420px' }} />
+          <div ref={mapRef} className="w-full rounded-2xl overflow-hidden mb-6" style={{ height: '420px' }} aria-label="Interactive eco places map" role="application" />
         )}
 
         {/* Curated places — always shown, labelled differently based on context */}
-        <div>
+        <section aria-label={`${activePT?.label} places`}>
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">{activePT?.emoji}</span>
+            <span className="text-2xl" aria-hidden="true">{activePT?.emoji}</span>
             <div>
               <h2 className="font-display font-bold text-lg text-forest-900 dark:text-cream-100">
                 {activePT?.label}
@@ -310,13 +314,13 @@ export default function Map() {
               <PlaceCard key={place.name} place={place} emoji={activePT?.emoji} index={i} />
             ))}
           </div>
-        </div>
+        </section>
 
         {/* If no Maps key, show info banner */}
         {!mapsKey && (
           <div className="mt-6 p-4 rounded-2xl bg-forest-800/10 dark:bg-cream-100/5 border border-forest-800/20 dark:border-cream-100/10 text-center">
             <p className="text-sm text-forest-700/70 dark:text-cream-200/60">
-              🗺️ Add a Google Maps API key in <strong>Settings ⚙️</strong> to see live places near your location.
+              <span aria-hidden="true">🗺️</span> Add a Google Maps API key in <strong>Settings <span aria-hidden="true">⚙️</span></strong> to see live places near your location.
               The curated list above works without any API key.
             </p>
           </div>

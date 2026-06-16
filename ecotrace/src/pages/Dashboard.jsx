@@ -54,6 +54,8 @@ function AnimatedNumber({ value, suffix = '' }) {
 }
 
 export default function Dashboard({ footprintData, logs = [], setCurrentPage }) {
+  useEffect(() => { document.title = 'My Dashboard | EcoTrace'; }, []);
+
   const hasData = !!footprintData;
   const total = footprintData?.total || 0;
   const breakdown = footprintData?.breakdown || {};
@@ -110,7 +112,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           animate={{ opacity: 1, scale: 1 }}
           className="text-center glass-card p-10 max-w-sm mx-auto"
         >
-          <span className="text-6xl block mb-4">📊</span>
+          <span className="text-6xl block mb-4" aria-hidden="true">📊</span>
           <h2 className="font-display text-2xl font-bold text-forest-800 dark:text-cream-100 mb-2">
             No Footprint Data
           </h2>
@@ -118,13 +120,13 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
             Complete the 5-step quiz to calculate your annual CO₂ footprint and unlock your personalised dashboard.
           </p>
           <p className="text-forest-700/50 dark:text-cream-200/40 mb-6 text-xs">
-            Takes about 2 minutes ⏱️
+            Takes about 2 minutes <span aria-hidden="true">⏱️</span>
           </p>
           <button
             onClick={() => setCurrentPage?.('quiz')}
             className="btn-primary w-full text-base py-4"
           >
-            🌿 Take the Quiz
+            <span aria-hidden="true">🌿</span> Take the Quiz
           </button>
         </motion.div>
       </div>
@@ -136,7 +138,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
       <div className="max-w-6xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">
-            Your Dashboard 🌿
+            Your Dashboard <span aria-hidden="true">🌿</span>
           </h1>
           <p className="text-forest-700/60 dark:text-cream-200/50 text-sm mt-1">
             Annual carbon footprint overview
@@ -147,35 +149,37 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-auto">
 
           {/* Total Score — spans 2 cols */}
-          <BentoCard className="lg:col-span-2 text-center" span="">
-            <p className="text-sm font-semibold text-forest-700/70 dark:text-cream-200/50 mb-1">Annual Footprint</p>
-            <div className="text-5xl font-display font-black mb-1" style={{ color: scoreColor }}>
-              <AnimatedNumber value={total} suffix=" kg" />
-            </div>
-            <div className="text-sm font-semibold mb-3" style={{ color: scoreColor }}>
-              {scoreLabel.emoji} {scoreLabel.text}
-            </div>
-            {/* Mini progress vs India avg */}
-            <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1 text-left">
-              vs India average ({BENCHMARKS.india.toLocaleString()} kg)
-            </div>
-            <div className="h-3 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: scoreColor }}
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min((total / 10000) * 100, 100)}%` }}
-                transition={{ duration: 1.2 }}
-              />
-            </div>
-            <div className="mt-3 text-xs text-forest-700/60 dark:text-cream-200/50">
-              🌳 Requires <strong>{trees}</strong> trees to offset annually
-            </div>
-          </BentoCard>
+          <section aria-label="Carbon footprint summary">
+            <BentoCard className="lg:col-span-2 text-center" span="">
+              <p className="text-sm font-semibold text-forest-700/70 dark:text-cream-200/50 mb-1">Annual Footprint</p>
+              <div className="text-5xl font-display font-black mb-1" style={{ color: scoreColor }}>
+                <AnimatedNumber value={total} suffix=" kg" />
+              </div>
+              <div className="text-sm font-semibold mb-3" style={{ color: scoreColor }}>
+                <span aria-hidden="true">{scoreLabel.emoji}</span> {scoreLabel.text}
+              </div>
+              {/* Mini progress vs India avg */}
+              <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1 text-left">
+                vs India average ({BENCHMARKS.india.toLocaleString()} kg)
+              </div>
+              <div className="h-3 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: scoreColor }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min((total / 10000) * 100, 100)}%` }}
+                  transition={{ duration: 1.2 }}
+                />
+              </div>
+              <div className="mt-3 text-xs text-forest-700/60 dark:text-cream-200/50">
+                <span aria-hidden="true">🌳</span> Requires <strong>{trees}</strong> trees to offset annually
+              </div>
+            </BentoCard>
+          </section>
 
           {/* Streak card */}
           <BentoCard className="text-center flex flex-col items-center justify-center">
-            <span className="text-4xl mb-2">{analytics.streak > 0 ? '🔥' : '🌱'}</span>
+            <span className="text-4xl mb-2" aria-hidden="true">{analytics.streak > 0 ? '🔥' : '🌱'}</span>
             <div className="font-display text-3xl font-bold text-forest-800 dark:text-cream-100">
               {analytics.streak}
             </div>
@@ -191,7 +195,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
 
           {/* Daily average */}
           <BentoCard className="text-center flex flex-col items-center justify-center">
-            <span className="text-4xl mb-2">📅</span>
+            <span className="text-4xl mb-2" aria-hidden="true">📅</span>
             <div className="font-display text-3xl font-bold text-forest-800 dark:text-cream-100">
               {footprintData.dailyAvg}
             </div>
@@ -204,16 +208,18 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           </BentoCard>
 
           {/* Category breakdown pie */}
-          <BentoCard className="lg:col-span-2">
-            {pieData && (
-              <ChartCard
-                type="pie"
-                data={pieData}
-                title="Emissions by Category"
-                options={{ height: 220, legend: { position: 'right', textStyle: { fontSize: 11 } } }}
-              />
-            )}
-          </BentoCard>
+          <section aria-label="Carbon footprint breakdown">
+            <BentoCard className="lg:col-span-2">
+              {pieData && (
+                <ChartCard
+                  type="pie"
+                  data={pieData}
+                  title="Emissions by Category"
+                  options={{ height: 220, legend: { position: 'right', textStyle: { fontSize: 11 } } }}
+                />
+              )}
+            </BentoCard>
+          </section>
 
           {/* Weekly trend line */}
           <BentoCard className="lg:col-span-2">
@@ -236,45 +242,47 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           </BentoCard>
 
           {/* Category breakdown bars */}
-          <BentoCard className="lg:col-span-2">
-            <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-              Category Breakdown
-            </h3>
-            <div className="space-y-3">
-              {Object.entries(breakdown)
-                .sort(([, a], [, b]) => b - a)
-                .map(([cat, val]) => {
-                  const meta = CATEGORY_META[cat];
-                  const pct = Math.round((val / total) * 100);
-                  return (
-                    <div key={cat}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-forest-800 dark:text-cream-100 font-medium">
-                          {meta?.emoji} {meta?.label}
-                        </span>
-                        <span className="text-forest-700/70 dark:text-cream-200/60">
-                          {val.toLocaleString()} kg ({pct}%)
-                        </span>
+          <section aria-label="Category emissions breakdown">
+            <BentoCard className="lg:col-span-2">
+              <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
+                Category Breakdown
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(breakdown)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([cat, val]) => {
+                    const meta = CATEGORY_META[cat];
+                    const pct = Math.round((val / total) * 100);
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-forest-800 dark:text-cream-100 font-medium">
+                            <span aria-hidden="true">{meta?.emoji}</span> {meta?.label}
+                          </span>
+                          <span className="text-forest-700/70 dark:text-cream-200/60">
+                            {val.toLocaleString()} kg ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: meta?.color || '#2d5016' }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: meta?.color || '#2d5016' }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.8, delay: 0.2 }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </BentoCard>
+                    );
+                  })}
+              </div>
+            </BentoCard>
+          </section>
 
           {/* Top 3 quick wins */}
           <BentoCard className="lg:col-span-2">
             <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-              ⚡ Top 3 Quick Wins
+              <span aria-hidden="true">⚡</span> Top 3 Quick Wins
             </h3>
             <div className="space-y-3">
               {tips.map((tip, i) => (
@@ -286,7 +294,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           {/* Achievement badges preview */}
           <BentoCard className="lg:col-span-2">
             <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-              🏆 Achievements
+              <span aria-hidden="true">🏆</span> Achievements
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -303,7 +311,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
                       : 'border-forest-800/10 dark:border-cream-100/10 opacity-50 grayscale'
                   }`}
                 >
-                  <span className="text-2xl">{badge.icon}</span>
+                  <span className="text-2xl" aria-hidden="true">{badge.icon}</span>
                   <div>
                     <div className="text-xs font-semibold text-forest-800 dark:text-cream-100">{badge.title}</div>
                     <div className="text-xs text-forest-700/60 dark:text-cream-200/50">{badge.desc}</div>

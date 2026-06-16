@@ -91,17 +91,19 @@ export default function App() {
       />
 
       {/* Page transitions */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPage}
-          variants={PAGE_VARIANTS}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-        >
-          {renderPage()}
-        </motion.div>
-      </AnimatePresence>
+      <main id="main-content">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPage}
+            variants={PAGE_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {renderPage()}
+          </motion.div>
+        </AnimatePresence>
+      </main>
 
       {/* First-launch or settings modal */}
       {(firstLaunch || showSetup) && (

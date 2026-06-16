@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives",
+    "test": "NODE_PATH=../node_modules ../node_modules/.bin/vitest run",
+    "test:watch": "NODE_PATH=../node_modules ../node_modules/.bin/vitest",
     "deploy": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
@@ -25,6 +27,11 @@
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
-    "eslint": "^8.57.0"
+    "eslint": "^8.57.0",
+    "vitest": "^4.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/user-event": "^14.5.0",
+    "jsdom": "^24.0.0"
   }
 }

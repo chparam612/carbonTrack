@@ -20,8 +20,9 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
         <button
           onClick={() => setCurrentPage('home')}
           className="flex items-center gap-2 group"
+          aria-label="Go to home page"
         >
-          <span className="text-2xl group-hover:rotate-12 transition-transform duration-200">🌿</span>
+          <span className="text-2xl group-hover:rotate-12 transition-transform duration-200" aria-hidden="true">🌿</span>
           <span className="font-display font-bold text-xl text-forest-800 dark:text-cream-100">
             EcoTrace
           </span>
@@ -33,6 +34,7 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
             <button
               key={item.id}
               onClick={() => setCurrentPage(item.id)}
+              aria-current={currentPage === item.id ? 'page' : undefined}
               className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
                 ${currentPage === item.id
                   ? 'text-forest-800 dark:text-cream-100'
@@ -43,9 +45,12 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
                 <motion.span
                   layoutId="nav-pill"
                   className="absolute inset-0 bg-forest-800/10 dark:bg-cream-100/10 rounded-lg"
+                  aria-hidden="true"
                 />
               )}
-              <span className="relative">{item.emoji} {item.label}</span>
+              <span className="relative">
+                <span aria-hidden="true">{item.emoji}</span> {item.label}
+              </span>
             </button>
           ))}
         </div>
@@ -56,26 +61,28 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
-            title="Toggle theme"
+            aria-label="Toggle dark mode"
           >
-            <span className="text-lg">{darkMode ? '☀️' : '🌙'}</span>
+            <span className="text-lg" aria-hidden="true">{darkMode ? '☀️' : '🌙'}</span>
           </button>
 
           {/* Settings */}
           <button
             onClick={() => setShowSetup(true)}
             className="p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
-            title="API Settings"
+            aria-label="Open settings"
           >
-            <span className="text-lg">⚙️</span>
+            <span className="text-lg" aria-hidden="true">⚙️</span>
           </button>
 
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
+            aria-label="Open navigation menu"
+            aria-expanded={mobileOpen}
           >
-            <span className="text-lg">{mobileOpen ? '✕' : '☰'}</span>
+            <span className="text-lg" aria-hidden="true">{mobileOpen ? '✕' : '☰'}</span>
           </button>
         </div>
       </div>
@@ -94,13 +101,14 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
                 <button
                   key={item.id}
                   onClick={() => { setCurrentPage(item.id); setMobileOpen(false); }}
+                  aria-current={currentPage === item.id ? 'page' : undefined}
                   className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all
                     ${currentPage === item.id
                       ? 'bg-forest-800 text-cream-100'
                       : 'text-forest-800 dark:text-cream-100 hover:bg-forest-800/10'
                     }`}
                 >
-                  {item.emoji} {item.label}
+                  <span aria-hidden="true">{item.emoji}</span> {item.label}
                 </button>
               ))}
             </div>

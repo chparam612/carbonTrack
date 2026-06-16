@@ -95,7 +95,7 @@ function LeafCanvas() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} id="leaf-canvas" />;
+  return <canvas ref={canvasRef} id="leaf-canvas" aria-hidden="true" />;
 }
 
 // Live CO₂ counter
@@ -117,7 +117,7 @@ function CO2Counter() {
       transition={{ delay: 0.6 }}
       className="inline-flex items-center gap-3 glass-card px-5 py-3 mx-auto"
     >
-      <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+      <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
       <span className="text-sm font-medium text-forest-800 dark:text-cream-100">
         Live atmospheric CO₂:
       </span>
@@ -129,18 +129,20 @@ function CO2Counter() {
 }
 
 export default function Home({ setCurrentPage }) {
+  useEffect(() => { document.title = 'EcoTrace — Know Your Carbon'; }, []);
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       <LeafCanvas />
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center justify-center text-center px-4 pt-32 pb-20">
+      <section className="relative z-10 flex flex-col items-center justify-center text-center px-4 pt-32 pb-20" aria-label="Hero">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
-          <span className="text-6xl mb-4 block animate-float">🌿</span>
+          <span className="text-6xl mb-4 block animate-float" aria-hidden="true">🌿</span>
           <h1 className="font-display text-5xl md:text-7xl font-black text-forest-900 dark:text-cream-100 leading-tight mb-4">
             Know Your Carbon.<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-forest-700 to-gold-500">
@@ -165,7 +167,7 @@ export default function Home({ setCurrentPage }) {
             onClick={() => setCurrentPage('quiz')}
             className="btn-primary text-lg px-8 py-4 flex items-center gap-2"
           >
-            🌱 Start My Journey
+            <span aria-hidden="true">🌱</span> Start My Journey
           </button>
           <button
             onClick={() => setCurrentPage('dashboard')}
@@ -177,7 +179,7 @@ export default function Home({ setCurrentPage }) {
       </section>
 
       {/* Feature cards */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 pb-24">
+      <section className="relative z-10 max-w-5xl mx-auto px-4 pb-24" aria-label="Features">
         <motion.h2
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -198,7 +200,7 @@ export default function Home({ setCurrentPage }) {
               whileHover={{ y: -6 }}
               className="glass-card p-6 text-center group cursor-default"
             >
-              <span className="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-200">
+              <span className="text-5xl mb-4 block group-hover:scale-110 transition-transform duration-200" aria-hidden="true">
                 {f.emoji}
               </span>
               <h3 className="font-display font-bold text-xl text-forest-800 dark:text-cream-100 mb-2">
@@ -213,7 +215,7 @@ export default function Home({ setCurrentPage }) {
       </section>
 
       {/* Stats strip */}
-      <section className="relative z-10 bg-forest-900 dark:bg-forest-800 py-12 px-4">
+      <section className="relative z-10 bg-forest-900 dark:bg-forest-800 py-12 px-4" aria-label="Carbon statistics">
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { label: 'India avg footprint', value: '1,900 kg', sub: 'CO₂/year' },

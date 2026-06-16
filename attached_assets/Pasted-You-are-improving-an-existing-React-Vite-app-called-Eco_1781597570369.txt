@@ -1,0 +1,232 @@
+You are improving an existing React + Vite app called EcoTrace in the 
+ecotrace/ folder. Do NOT rewrite working code. Only add what's listed.
+
+═══════════════════════════════════════════════
+🔧 FIX A — ADD TESTS (score is currently 0)
+═══════════════════════════════════════════════
+
+STEP 1: Add Vitest to ecotrace/package.json devDependencies:
+
+"vitest": "^1.6.0",
+"@testing-library/react": "^16.0.0",
+"@testing-library/jest-dom": "^6.4.0",
+"@testing-library/user-event": "^14.5.0",
+"jsdom": "^24.0.0"
+
+Also add to the scripts section:
+"test": "vitest run",
+"test:watch": "vitest"
+
+STEP 2: Add to ecotrace/vite.config.js (inside defineConfig):
+test: {
+  globals: true,
+  environment: 'jsdom',
+  setupFiles: './src/test/setup.js',
+}
+
+STEP 3: Create ecotrace/src/test/setup.js:
+import '@testing-library/jest-dom';
+
+STEP 4: Create ecotrace/src/test/carbonCalculator.test.js:
+
+import { describe, it, expect } from 'vitest';
+import { calculateFootprint, calculateDailyLog } from '../algorithms/carbonCalculator.js';
+
+describe('calculateFootprint', () => {
+  it('returns a number greater than 0 for a typical Indian user', () => {
+    const result = calculateFootprint({
+      vehicle_type: 'car_petrol',
+      km_per_day: 20,
+      flights_per_year: 2,
+      avg_flight_duration: 'short',
+      diet_type: 'meat_regular',
+      meals_out_per_week: 5,
+      monthly_kwh: 250,
+      energy_source: 'india_grid',
+      ac_months: 6,
+      shopping_frequency: 'moderate',
+      online_orders_month: 8,
+      recycling_habit: 'recycles_some',
+      composting: 'no',
+    });
+    expect(result.total).toBeGreaterThan(0);
+  });
+
+  it('vegan with metro travel has lower footprint than meat-eater with petrol car', () => {
+    const low = calculateFootprint({
+      vehicle_type: 'metro_train', km_per_day: 10, flights_per_year: 0,
+      avg_flight_duration: 'short', diet_type: 'vegan', meals_out_per_week: 2,
+      monthly_kwh: 100, energy_source: 'solar', ac_months: 2,
+      shopping_frequency: 'minimal', online_orders_month: 1,
+      recycling_habit: 'recycles_most', composting: 'yes',
+    });
+    const high = calculateFootprint({
+      vehicle_type: 'car_petrol', km_per_day: 40, flights_per_year: 6,
+      avg_flight_duration: 'long', diet_type: 'meat_heavy', meals_out_per_week: 14,
+      monthly_kwh: 600, energy_source: 'india_grid', ac_months: 10,
+      shopping_frequency: 'excessive', online_orders_month: 30,
+      recycling_habit: 'no_recycling', composting: 'no',
+    });
+    expect(low.total).toBeLessThan(high.total);
+  });
+
+  it('returns breakdown with all 5 categories', () => {
+    const result = calculateFootprint({
+      vehicle_type: 'bus', km_per_day: 15, flights_per_year: 1,
+      avg_flight_duration: 'short', diet_type: 'vegetarian', meals_out_per_week: 3,
+      monthly_kwh: 200, energy_source: 'india_grid', ac_months: 4,
+      shopping_frequency: 'moderate', online_orders_month: 5,
+      recycling_habit: 'recycles_some', composting: 'sometimes',
+    });
+    expect(result).toHaveProperty('transport');
+    expect(result).toHaveProperty('diet');
+    expect(result).toHaveProperty('energy');
+    expect(result).toHaveProperty('shopping');
+    expect(result).toHaveProperty('waste');
+  });
+
+  it('work from home user has near-zero transport emissions', () => {
+    const result = calculateFootprint({
+      vehicle_type: 'work_from_home', km_per_day: 0, flights_per_year: 0,
+      avg_flight_duration: 'short', diet_type: 'vegetarian', meals_out_per_week: 3,
+      monthly_kwh: 200, energy_source: 'india_grid', ac_months: 4,
+      shopping_frequency: 'moderate', online_orders_month: 5,
+      recycling_habit: 'recycles_some', composting: 'no',
+    });
+    expect(result.transport).toBeLessThan(50);
+  });
+});
+
+describe('calculateDailyLog', () => {
+  it('sums CO2 across multiple entries', () => {
+    const entries = [
+      { category: 'transport', type: 'car_petrol', value: 10 },
+      { category: 'diet', type: 'vegetarian', value: 1 },
+    ];
+    const result = calculateDailyLog(entries);
+    expect(result.total).toBeGreaterThan(0);
+  });
+
+  it('returns 0 for empty log', () => {
+    const result = calculateDailyLog([]);
+    expect(result.total).toBe(0);
+  });
+});
+
+STEP 5: Create ecotrace/src/test/TipCard.test.jsx:
+
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import TipCard from '../components/TipCard.jsx';
+
+const mockTip = {
+  category: 'transport',
+  action: 'Switch to public transport',
+  difficulty: 'easy',
+  timeToImpact: 'immediate',
+  annualSavingKg: 240,
+  whyItMatters: 'Buses emit 6x less CO2 per km than solo car trips.',
+};
+
+describe('TipCard', () => {
+  it('renders the tip action text', () => {
+    render(<TipCard tip={mockTip} index={0} />);
+    expect(screen.getByText('Switch to public transport')).toBeInTheDocument();
+  });
+
+  it('renders difficulty badge', () => {
+    render(<TipCard tip={mockTip} index={0} />);
+    expect(screen.getByText('easy')).toBeInTheDocument();
+  });
+
+  it('shows annual saving when showSaving is true', () => {
+    render(<TipCard tip={mockTip} index={0} showSaving={true} />);
+    expect(screen.getByText(/240/)).toBeInTheDocument();
+  });
+
+  it('renders without crashing when optional fields are missing', () => {
+    const minimalTip = { category: 'diet', action: 'Eat less meat', annualSavingKg: 0 };
+    render(<TipCard tip={minimalTip} index={0} />);
+    expect(screen.getByText('Eat less meat')).toBeInTheDocument();
+  });
+});
+
+═══════════════════════════════════════════════
+🔧 FIX B — ACCESSIBILITY (score is 45, target 80+)
+═══════════════════════════════════════════════
+
+Apply ALL of the following across the app:
+
+1. NAVBAR — every icon-only button needs aria-label:
+   Dark mode toggle: <button aria-label="Toggle dark mode">
+   Settings gear: <button aria-label="Open settings">
+   Mobile menu: <button aria-label="Open navigation menu">
+
+2. IMAGES & ICONS — add aria-hidden to decorative icons:
+   All emoji spans used as decoration: <span aria-hidden="true">🌿</span>
+   All framer-motion leaf/decorative canvas: aria-hidden="true"
+
+3. FORMS — every input must have an associated label.
+   In Quiz.jsx, every field rendered from QUIZ_STEPS must have:
+   <label htmlFor={field.key}>{field.label}</label>
+   <input id={field.key} ... />
+   Never use placeholder as the only label.
+
+4. FOCUS MANAGEMENT — add visible focus rings.
+   In ecotrace/src/index.css, add:
+   *:focus-visible {
+     outline: 2px solid #2d6a4f;
+     outline-offset: 2px;
+     border-radius: 4px;
+   }
+   *:focus:not(:focus-visible) {
+     outline: none;
+   }
+
+5. COLOR CONTRAST — the forest-700/cream-200 combos fail WCAG AA.
+   In tailwind.config.js, update these specific shades:
+   forest: {
+     ...existing,
+     700: '#1a5c3a',   // darkened from previous value
+     800: '#0f3d26',
+   }
+   cream: {
+     ...existing,
+     200: '#f5f0e8',   // lightened slightly
+   }
+
+6. SEMANTIC HTML — in Dashboard.jsx and Tracker.jsx:
+   Wrap each section in <section> with aria-label:
+   <section aria-label="Carbon footprint breakdown">
+   <section aria-label="Daily activity log">
+   Replace any <div role="button"> with actual <button> elements.
+
+7. SKIP LINK — add to the top of index.html body:
+   <a href="#main-content" 
+      style="position:absolute;left:-9999px;top:0"
+      onfocus="this.style.left='0'"
+      class="skip-link">
+     Skip to main content
+   </a>
+   And add id="main-content" to the <main> element in App.jsx.
+
+8. PAGE TITLES — each route should update document.title.
+   In each page component add at the top of the component:
+   useEffect(() => { document.title = 'PAGE NAME | EcoTrace'; }, []);
+   
+   Use these titles:
+   Home.jsx     → 'EcoTrace — Know Your Carbon'
+   Quiz.jsx     → 'Carbon Quiz | EcoTrace'
+   Dashboard.jsx → 'My Dashboard | EcoTrace'  
+   Tracker.jsx  → 'Activity Tracker | EcoTrace'
+   Insights.jsx → 'AI Insights | EcoTrace'
+   Map.jsx      → 'Eco Map | EcoTrace'
+
+═══════════════════════════════════════════════
+✅ VERIFY — run these after applying fixes
+═══════════════════════════════════════════════
+
+cd ecotrace
+npm install
+npm test          ← should show 10 tests passing
+npm run build     ← should still build clean

@@ -20,7 +20,7 @@ function EntryRow({ entry, onRemove }) {
       exit={{ opacity: 0, x: 16 }}
       className="flex items-center gap-3 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5"
     >
-      <span className="text-xl">{meta?.emoji || '📌'}</span>
+      <span className="text-xl" aria-hidden="true">{meta?.emoji || '📌'}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-forest-900 dark:text-cream-100 truncate">
           {entry.type} {entry.value ? `· ${entry.value}${entry.category === 'transport' ? ' km' : entry.category === 'energy' ? ' kWh' : ''}` : ''}
@@ -33,8 +33,11 @@ function EntryRow({ entry, onRemove }) {
       </span>
       <button
         onClick={onRemove}
+        aria-label={`Remove ${entry.type} entry`}
         className="text-red-400 hover:text-red-600 transition-colors text-sm p-1 shrink-0"
-      >✕</button>
+      >
+        <span aria-hidden="true">✕</span>
+      </button>
     </motion.div>
   );
 }
@@ -45,6 +48,8 @@ export default function Tracker({ onLogsUpdate }) {
   const [saved, setSaved] = useState(false);
   const [pastLogs, setPastLogs] = useState([]);
   const { saveLog, getLogs, ready } = useFirestore();
+
+  useEffect(() => { document.title = 'Activity Tracker | EcoTrace'; }, []);
 
   const { total, breakdown } = calculateDailyLog(entries);
 
@@ -86,7 +91,7 @@ export default function Tracker({ onLogsUpdate }) {
       <div className="max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">
-            Daily Tracker 📅
+            Daily Tracker <span aria-hidden="true">📅</span>
           </h1>
           <p className="text-forest-700/60 dark:text-cream-200/50 text-sm mt-1">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -94,42 +99,46 @@ export default function Tracker({ onLogsUpdate }) {
         </motion.div>
 
         {/* Running total */}
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="glass-card p-5 mb-6 text-center"
-        >
-          <p className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1">Today's CO₂</p>
-          <div className="font-display text-5xl font-black mb-1" style={{ color: co2Color }}>
-            {total.toFixed(2)} kg
-          </div>
-          {/* Category mini bars */}
-          {total > 0 && (
-            <div className="flex gap-1 mt-3 h-2 rounded-full overflow-hidden">
-              {Object.entries(breakdown).map(([cat, val]) => {
-                if (!val) return null;
-                const meta = CATEGORY_META[cat];
-                return (
-                  <motion.div
-                    key={cat}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(val / total) * 100}%` }}
-                    style={{ backgroundColor: meta?.color || '#2d5016' }}
-                    title={`${meta?.label}: ${val.toFixed(2)} kg`}
-                  />
-                );
-              })}
+        <section aria-label="Today's CO2 total">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="glass-card p-5 mb-6 text-center"
+          >
+            <p className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1">Today's CO₂</p>
+            <div className="font-display text-5xl font-black mb-1" style={{ color: co2Color }}>
+              {total.toFixed(2)} kg
             </div>
-          )}
-        </motion.div>
+            {/* Category mini bars */}
+            {total > 0 && (
+              <div className="flex gap-1 mt-3 h-2 rounded-full overflow-hidden" aria-hidden="true">
+                {Object.entries(breakdown).map(([cat, val]) => {
+                  if (!val) return null;
+                  const meta = CATEGORY_META[cat];
+                  return (
+                    <motion.div
+                      key={cat}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(val / total) * 100}%` }}
+                      style={{ backgroundColor: meta?.color || '#2d5016' }}
+                      title={`${meta?.label}: ${val.toFixed(2)} kg`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </section>
 
         {/* Category tabs */}
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" role="tablist" aria-label="Activity categories">
           {CATEGORIES.map((cat) => {
             const meta = CATEGORY_META[cat];
             return (
               <button
                 key={cat}
+                role="tab"
+                aria-selected={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200
                   ${activeCategory === cat
@@ -137,7 +146,7 @@ export default function Tracker({ onLogsUpdate }) {
                     : 'bg-forest-800/10 dark:bg-cream-100/10 text-forest-700 dark:text-cream-200 hover:bg-forest-800/20'
                   }`}
               >
-                <span>{meta?.emoji}</span>
+                <span aria-hidden="true">{meta?.emoji}</span>
                 {meta?.label}
               </button>
             );
@@ -145,11 +154,13 @@ export default function Tracker({ onLogsUpdate }) {
         </div>
 
         {/* Activity form */}
-        <ActivityForm onAdd={addEntry} category={activeCategory} />
+        <section aria-label="Add activity">
+          <ActivityForm onAdd={addEntry} category={activeCategory} />
+        </section>
 
         {/* Entries list */}
         {entries.length > 0 && (
-          <div className="mt-4 space-y-2">
+          <section aria-label="Daily activity log" className="mt-4 space-y-2">
             <h3 className="text-sm font-semibold text-forest-800 dark:text-cream-100 mb-2">
               Today's Entries ({entries.length})
             </h3>
@@ -168,12 +179,12 @@ export default function Tracker({ onLogsUpdate }) {
             >
               {saved ? '✅ Saved to your log!' : '💾 Save Today\'s Log'}
             </motion.button>
-          </div>
+          </section>
         )}
 
         {/* Past 7 days timeline */}
         {pastLogs.length > 0 && (
-          <div className="mt-10">
+          <section aria-label="Past 7 days activity" className="mt-10">
             <h3 className="font-display font-semibold text-lg text-forest-800 dark:text-cream-100 mb-4">
               Last 7 Days
             </h3>
@@ -216,7 +227,7 @@ export default function Tracker({ onLogsUpdate }) {
                   );
                 })}
             </div>
-          </div>
+          </section>
         )}
       </div>
     </div>

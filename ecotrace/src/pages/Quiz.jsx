@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QUIZ_STEPS } from '../data/quizQuestions.js';
 import { calculateFootprint } from '../algorithms/carbonCalculator.js';
@@ -11,7 +11,7 @@ function CO2Gauge({ value, max = 10000 }) {
   const color = pct < 0.3 ? '#2d5016' : pct < 0.6 ? '#DAA520' : pct < 0.8 ? '#D2691E' : '#ef4444';
 
   return (
-    <svg viewBox="0 0 200 120" className="w-48 mx-auto">
+    <svg viewBox="0 0 200 120" className="w-48 mx-auto" aria-hidden="true">
       {/* Background arc */}
       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round" />
       {/* Colored arc */}
@@ -103,7 +103,7 @@ function ResultScreen({ result, onContinue }) {
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
         className="glass-card p-3 mb-6 flex items-center gap-3"
       >
-        <span className="text-3xl">🌳</span>
+        <span className="text-3xl" aria-hidden="true">🌳</span>
         <p className="text-sm text-forest-800 dark:text-cream-100 text-left">
           Your footprint needs <strong>{trees} trees</strong> planted today to absorb all your CO₂ over a year.
         </p>
@@ -114,7 +114,7 @@ function ResultScreen({ result, onContinue }) {
         className="flex gap-3"
       >
         <button onClick={onContinue} className="btn-primary flex-1">
-          🌿 View My Dashboard
+          <span aria-hidden="true">🌿</span> View My Dashboard
         </button>
       </motion.div>
     </motion.div>
@@ -127,6 +127,8 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
   const [direction, setDirection] = useState(1);
   const [result, setResult] = useState(null);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => { document.title = 'Carbon Quiz | EcoTrace'; }, []);
 
   const currentStep = QUIZ_STEPS[step];
 
@@ -191,7 +193,7 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
             <span>Step {step + 1} of {QUIZ_STEPS.length}</span>
             <span>{Math.round(progress)}% complete</span>
           </div>
-          <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
             <motion.div
               className="h-full progress-plant"
               animate={{ width: `${((step + 0.5) / QUIZ_STEPS.length) * 100}%` }}
@@ -199,7 +201,7 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
             />
           </div>
           {/* Step dots */}
-          <div className="flex justify-between mt-2">
+          <div className="flex justify-between mt-2" aria-hidden="true">
             {QUIZ_STEPS.map((s, i) => (
               <div
                 key={s.id}
@@ -223,7 +225,7 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
             className="glass-card p-6 md:p-8"
           >
             <div className="text-center mb-6">
-              <span className="text-5xl block mb-3">{currentStep.emoji}</span>
+              <span className="text-5xl block mb-3" aria-hidden="true">{currentStep.emoji}</span>
               <h2 className="font-display text-2xl font-bold text-forest-900 dark:text-cream-100">
                 {currentStep.title}
               </h2>
@@ -235,36 +237,42 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
             <div className="space-y-5">
               {currentStep.fields.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-2">
+                  <label
+                    htmlFor={field.key}
+                    className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-2"
+                  >
                     {field.label}
                     {field.unit && <span className="font-normal text-forest-700/50 ml-1">({field.unit})</span>}
                   </label>
 
                   {field.type === 'select' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="group" aria-labelledby={field.key}>
                       {field.options.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => updateAnswer(field.key, opt.value)}
+                          aria-pressed={answers[field.key] === opt.value}
                           className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium text-left transition-all duration-150
                             ${answers[field.key] === opt.value
                               ? 'border-forest-700 bg-forest-800/10 dark:bg-forest-700/30 text-forest-900 dark:text-cream-100'
                               : 'border-forest-800/15 dark:border-cream-100/15 text-forest-700 dark:text-cream-200/70 hover:border-forest-700/40'
                             }`}
                         >
-                          <span className="text-lg">{opt.emoji}</span>
+                          <span className="text-lg" aria-hidden="true">{opt.emoji}</span>
                           {opt.label}
                         </button>
                       ))}
                     </div>
                   ) : (
                     <input
+                      id={field.key}
                       type="number"
                       min={field.min}
                       max={field.max}
                       value={answers[field.key] ?? ''}
                       onChange={(e) => updateAnswer(field.key, e.target.value)}
                       placeholder={field.placeholder}
+                      aria-describedby={errors[field.key] ? `${field.key}-error` : undefined}
                       className={`w-full px-4 py-3 rounded-xl border-2 text-forest-900 dark:text-cream-100
                         bg-white dark:bg-forest-800/50 focus:outline-none transition-colors
                         ${errors[field.key] ? 'border-red-400' : 'border-forest-800/15 dark:border-cream-100/15 focus:border-forest-700'}`}
@@ -272,7 +280,9 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
                   )}
 
                   {errors[field.key] && (
-                    <p className="text-xs text-red-500 mt-1">⚠️ {errors[field.key]}</p>
+                    <p id={`${field.key}-error`} className="text-xs text-red-500 mt-1" role="alert">
+                      <span aria-hidden="true">⚠️</span> {errors[field.key]}
+                    </p>
                   )}
                 </div>
               ))}

@@ -11,7 +11,7 @@ export default {
         forest: {
           900: '#1a2e1a',
           800: '#2d5016',
-          700: '#3d6b1f',
+          700: '#1a5c3a',
           600: '#4d8528',
           500: '#5d9f31',
         },
@@ -22,7 +22,7 @@ export default {
         },
         cream: {
           100: '#F5F0E8',
-          200: '#EDE8DC',
+          200: '#f5f0e8',
           300: '#DDD5C4',
         },
         gold: {

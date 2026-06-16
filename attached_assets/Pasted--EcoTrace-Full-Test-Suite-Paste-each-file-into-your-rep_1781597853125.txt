@@ -1,0 +1,810 @@
+# EcoTrace — Full Test Suite
+## Paste each file into your repo at the path shown
+
+---
+
+## FILE 1: `ecotrace/src/test/setup.js`
+```js
+import '@testing-library/jest-dom';
+```
+
+---
+
+## FILE 2: `ecotrace/src/test/carbonCalculator.test.js`
+Tests the core CO₂ calculation engine — emission factors, category math, edge cases.
+
+```js
+import { describe, it, expect } from 'vitest';
+import { calculateFootprint, calculateDailyLog } from '../algorithms/carbonCalculator.js';
+
+// ─── Shared fixtures ───────────────────────────────────────────────────────
+const BASE_INPUT = {
+  vehicle_type: 'car_petrol',
+  km_per_day: 20,
+  flights_per_year: 2,
+  avg_flight_duration: 'short',
+  diet_type: 'meat_regular',
+  meals_out_per_week: 5,
+  monthly_kwh: 250,
+  energy_source: 'india_grid',
+  ac_months: 6,
+  shopping_frequency: 'moderate',
+  online_orders_month: 8,
+  recycling_habit: 'recycles_some',
+  composting: 'no',
+};
+
+const LOW_IMPACT_INPUT = {
+  vehicle_type: 'metro_train',
+  km_per_day: 5,
+  flights_per_year: 0,
+  avg_flight_duration: 'short',
+  diet_type: 'vegan',
+  meals_out_per_week: 1,
+  monthly_kwh: 80,
+  energy_source: 'solar',
+  ac_months: 1,
+  shopping_frequency: 'minimal',
+  online_orders_month: 1,
+  recycling_habit: 'recycles_most',
+  composting: 'yes',
+};
+
+const HIGH_IMPACT_INPUT = {
+  vehicle_type: 'car_petrol',
+  km_per_day: 60,
+  flights_per_year: 10,
+  avg_flight_duration: 'long',
+  diet_type: 'meat_heavy',
+  meals_out_per_week: 21,
+  monthly_kwh: 800,
+  energy_source: 'india_grid',
+  ac_months: 12,
+  shopping_frequency: 'excessive',
+  online_orders_month: 40,
+  recycling_habit: 'no_recycling',
+  composting: 'no',
+};
+
+// ─── Return shape ──────────────────────────────────────────────────────────
+describe('calculateFootprint — return shape', () => {
+  it('returns an object with total and all 5 category keys', () => {
+    const result = calculateFootprint(BASE_INPUT);
+    expect(result).toHaveProperty('total');
+    expect(result).toHaveProperty('transport');
+    expect(result).toHaveProperty('diet');
+    expect(result).toHaveProperty('energy');
+    expect(result).toHaveProperty('shopping');
+    expect(result).toHaveProperty('waste');
+  });
+
+  it('total equals sum of all category values', () => {
+    const r = calculateFootprint(BASE_INPUT);
+    const sum = r.transport + r.diet + r.energy + r.shopping + r.waste;
+    expect(Math.abs(r.total - sum)).toBeLessThan(0.01);
+  });
+
+  it('all values are finite numbers (no NaN, no Infinity)', () => {
+    const r = calculateFootprint(BASE_INPUT);
+    ['total','transport','diet','energy','shopping','waste'].forEach(k => {
+      expect(Number.isFinite(r[k])).toBe(true);
+    });
+  });
+
+  it('all values are non-negative', () => {
+    const r = calculateFootprint(BASE_INPUT);
+    ['total','transport','diet','energy','shopping','waste'].forEach(k => {
+      expect(r[k]).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
+
+// ─── Transport emission factor correctness ─────────────────────────────────
+describe('calculateFootprint — transport category', () => {
+  it('work from home produces near-zero transport emissions', () => {
+    const r = calculateFootprint({ ...BASE_INPUT, vehicle_type: 'work_from_home', km_per_day: 0 });
+    expect(r.transport).toBeLessThan(50); // only flights if any
+  });
+
+  it('metro/train is lower emission than petrol car for same distance', () => {
+    const car = calculateFootprint({ ...BASE_INPUT, vehicle_type: 'car_petrol', km_per_day: 30 });
+    const metro = calculateFootprint({ ...BASE_INPUT, vehicle_type: 'metro_train', km_per_day: 30 });
+    expect(metro.transport).toBeLessThan(car.transport);
+  });
+
+  it('diesel car is higher than CNG car for same km', () => {
+    const diesel = calculateFootprint({ ...BASE_INPUT, vehicle_type: 'car_diesel', km_per_day: 25 });
+    const cng = calculateFootprint({ ...BASE_INPUT, vehicle_type: 'car_cng', km_per_day: 25 });
+    expect(diesel.transport).toBeGreaterThan(cng.transport);
+  });
+
+  it('long haul flight adds more CO2 than short haul', () => {
+    const shortHaul = calculateFootprint({ ...BASE_INPUT, flights_per_year: 4, avg_flight_duration: 'short' });
+    const longHaul = calculateFootprint({ ...BASE_INPUT, flights_per_year: 4, avg_flight_duration: 'long' });
+    expect(longHaul.transport).toBeGreaterThan(shortHaul.transport);
+  });
+
+  it('zero flights means flight contribution is zero', () => {
+    const noFlights = calculateFootprint({ ...BASE_INPUT, flights_per_year: 0, vehicle_type: 'work_from_home', km_per_day: 0 });
+    expect(noFlights.transport).toBeLessThan(5);
+  });
+
+  it('transport scales proportionally with km_per_day', () => {
+    const r10 = calculateFootprint({ ...BASE_INPUT, km_per_day: 10, flights_per_year: 0 });
+    const r20 = calculateFootprint({ ...BASE_INPUT, km_per_day: 20, flights_per_year: 0 });
+    // doubling km should roughly double transport (within 5% tolerance)
+    const ratio = r20.transport / r10.transport;
+    expect(ratio).toBeGreaterThan(1.7);
+    expect(ratio).toBeLessThan(2.3);
+  });
+});
+
+// ─── Diet emission factor correctness ─────────────────────────────────────
+describe('calculateFootprint — diet category', () => {
+  const diets = ['vegan', 'vegetarian', 'meat_occasional', 'meat_regular', 'meat_heavy'];
+
+  it('diet emissions increase from vegan to meat_heavy', () => {
+    const values = diets.map(d =>
+      calculateFootprint({ ...BASE_INPUT, diet_type: d }).diet
+    );
+    for (let i = 0; i < values.length - 1; i++) {
+      expect(values[i]).toBeLessThanOrEqual(values[i + 1]);
+    }
+  });
+
+  it('vegan diet has the lowest diet emissions', () => {
+    const vegan = calculateFootprint({ ...BASE_INPUT, diet_type: 'vegan' }).diet;
+    diets.slice(1).forEach(d => {
+      const other = calculateFootprint({ ...BASE_INPUT, diet_type: d }).diet;
+      expect(vegan).toBeLessThanOrEqual(other);
+    });
+  });
+
+  it('meals out per week adds to diet CO2', () => {
+    const low = calculateFootprint({ ...BASE_INPUT, meals_out_per_week: 0 });
+    const high = calculateFootprint({ ...BASE_INPUT, meals_out_per_week: 14 });
+    expect(high.diet).toBeGreaterThan(low.diet);
+  });
+});
+
+// ─── Energy emission factor correctness ───────────────────────────────────
+describe('calculateFootprint — energy category', () => {
+  it('solar produces lower energy emissions than india_grid', () => {
+    const grid = calculateFootprint({ ...BASE_INPUT, energy_source: 'india_grid' });
+    const solar = calculateFootprint({ ...BASE_INPUT, energy_source: 'solar' });
+    expect(solar.energy).toBeLessThan(grid.energy);
+  });
+
+  it('energy scales with monthly_kwh', () => {
+    const low = calculateFootprint({ ...BASE_INPUT, monthly_kwh: 100 });
+    const high = calculateFootprint({ ...BASE_INPUT, monthly_kwh: 500 });
+    expect(high.energy).toBeGreaterThan(low.energy);
+  });
+
+  it('India CEA 2023 grid factor ~0.82 kg/kWh is applied', () => {
+    // 100 kWh/month × 12 months × 0.82 = ~984 kg/year
+    const r = calculateFootprint({
+      ...BASE_INPUT,
+      monthly_kwh: 100,
+      energy_source: 'india_grid',
+      ac_months: 0,
+    });
+    expect(r.energy).toBeGreaterThan(900);
+    expect(r.energy).toBeLessThan(1100);
+  });
+
+  it('more AC months adds to energy emissions', () => {
+    const low = calculateFootprint({ ...BASE_INPUT, ac_months: 0 });
+    const high = calculateFootprint({ ...BASE_INPUT, ac_months: 10 });
+    expect(high.energy).toBeGreaterThan(low.energy);
+  });
+});
+
+// ─── Shopping emission factor correctness ─────────────────────────────────
+describe('calculateFootprint — shopping category', () => {
+  const levels = ['minimal', 'moderate', 'high', 'excessive'];
+
+  it('shopping emissions increase with frequency level', () => {
+    const values = levels.map(f =>
+      calculateFootprint({ ...BASE_INPUT, shopping_frequency: f }).shopping
+    );
+    for (let i = 0; i < values.length - 1; i++) {
+      expect(values[i]).toBeLessThanOrEqual(values[i + 1]);
+    }
+  });
+
+  it('online orders contribute to shopping emissions', () => {
+    const low = calculateFootprint({ ...BASE_INPUT, online_orders_month: 0 });
+    const high = calculateFootprint({ ...BASE_INPUT, online_orders_month: 30 });
+    expect(high.shopping).toBeGreaterThan(low.shopping);
+  });
+});
+
+// ─── Waste emission factor correctness ────────────────────────────────────
+describe('calculateFootprint — waste category', () => {
+  it('recycling most waste produces less CO2 than no recycling', () => {
+    const recycles = calculateFootprint({ ...BASE_INPUT, recycling_habit: 'recycles_most' });
+    const noRecycle = calculateFootprint({ ...BASE_INPUT, recycling_habit: 'no_recycling' });
+    expect(recycles.waste).toBeLessThan(noRecycle.waste);
+  });
+
+  it('composting reduces waste emissions', () => {
+    const compost = calculateFootprint({ ...BASE_INPUT, composting: 'yes' });
+    const noCompost = calculateFootprint({ ...BASE_INPUT, composting: 'no' });
+    expect(compost.waste).toBeLessThanOrEqual(noCompost.waste);
+  });
+});
+
+// ─── End-to-end ordering ──────────────────────────────────────────────────
+describe('calculateFootprint — overall ordering', () => {
+  it('high impact profile emits more than low impact profile', () => {
+    const low = calculateFootprint(LOW_IMPACT_INPUT);
+    const high = calculateFootprint(HIGH_IMPACT_INPUT);
+    expect(high.total).toBeGreaterThan(low.total);
+  });
+
+  it('high impact total is at least 3x the low impact total', () => {
+    const low = calculateFootprint(LOW_IMPACT_INPUT);
+    const high = calculateFootprint(HIGH_IMPACT_INPUT);
+    expect(high.total / low.total).toBeGreaterThan(3);
+  });
+
+  it('typical Indian user is in range 1500–3500 kg/year', () => {
+    const r = calculateFootprint(BASE_INPUT);
+    expect(r.total).toBeGreaterThan(1500);
+    expect(r.total).toBeLessThan(3500);
+  });
+});
+
+// ─── calculateDailyLog ────────────────────────────────────────────────────
+describe('calculateDailyLog', () => {
+  it('returns 0 for empty array', () => {
+    expect(calculateDailyLog([]).total).toBe(0);
+  });
+
+  it('sums CO2 across multiple entries', () => {
+    const entries = [
+      { category: 'transport', type: 'car_petrol', value: 10 },
+      { category: 'diet', type: 'vegetarian', value: 1 },
+      { category: 'energy', type: 'india_grid', value: 5 },
+    ];
+    expect(calculateDailyLog(entries).total).toBeGreaterThan(0);
+  });
+
+  it('single transport entry scales with distance value', () => {
+    const short = calculateDailyLog([{ category: 'transport', type: 'car_petrol', value: 5 }]);
+    const long  = calculateDailyLog([{ category: 'transport', type: 'car_petrol', value: 50 }]);
+    expect(long.total).toBeGreaterThan(short.total);
+  });
+
+  it('diet entry with value 1 returns non-zero CO2', () => {
+    const r = calculateDailyLog([{ category: 'diet', type: 'meat_heavy', value: 1 }]);
+    expect(r.total).toBeGreaterThan(0);
+  });
+
+  it('all-category log returns breakdown object', () => {
+    const entries = [
+      { category: 'transport', type: 'bus', value: 10 },
+      { category: 'diet', type: 'vegan', value: 1 },
+      { category: 'energy', type: 'india_grid', value: 3 },
+      { category: 'shopping', type: 'online_order', value: 1 },
+      { category: 'waste', type: 'recycles_most', value: 1 },
+    ];
+    const r = calculateDailyLog(entries);
+    expect(r).toHaveProperty('total');
+    expect(r.total).toBeGreaterThan(0);
+  });
+});
+```
+
+---
+
+## FILE 3: `ecotrace/src/test/tipRanker.test.js`
+Tests the tip ranking algorithm — sorting by impact, category filtering, savings calculation.
+
+```js
+import { describe, it, expect } from 'vitest';
+import { rankTips, getTopTips } from '../algorithms/tipRanker.js';
+
+// ─── Shared fixture ────────────────────────────────────────────────────────
+const HIGH_TRANSPORT_PROFILE = {
+  total: 4200,
+  transport: 2800,
+  diet: 600,
+  energy: 500,
+  shopping: 200,
+  waste: 100,
+};
+
+const HIGH_DIET_PROFILE = {
+  total: 3800,
+  transport: 400,
+  diet: 2600,
+  energy: 500,
+  shopping: 200,
+  waste: 100,
+};
+
+const BALANCED_PROFILE = {
+  total: 3000,
+  transport: 700,
+  diet: 700,
+  energy: 700,
+  shopping: 500,
+  waste: 400,
+};
+
+// ─── rankTips — return shape ───────────────────────────────────────────────
+describe('rankTips — return shape', () => {
+  it('returns an array', () => {
+    expect(Array.isArray(rankTips(HIGH_TRANSPORT_PROFILE))).toBe(true);
+  });
+
+  it('returns at least 5 tips', () => {
+    expect(rankTips(HIGH_TRANSPORT_PROFILE).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('each tip has required fields: action, category, annualSavingKg, difficulty', () => {
+    const tips = rankTips(HIGH_TRANSPORT_PROFILE);
+    tips.forEach(tip => {
+      expect(tip).toHaveProperty('action');
+      expect(tip).toHaveProperty('category');
+      expect(tip).toHaveProperty('annualSavingKg');
+      expect(tip).toHaveProperty('difficulty');
+    });
+  });
+
+  it('annualSavingKg is a non-negative number on every tip', () => {
+    rankTips(HIGH_TRANSPORT_PROFILE).forEach(tip => {
+      expect(typeof tip.annualSavingKg).toBe('number');
+      expect(tip.annualSavingKg).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it('difficulty is one of easy / medium / hard', () => {
+    rankTips(HIGH_TRANSPORT_PROFILE).forEach(tip => {
+      expect(['easy', 'medium', 'hard']).toContain(tip.difficulty);
+    });
+  });
+});
+
+// ─── rankTips — ordering ──────────────────────────────────────────────────
+describe('rankTips — ordering by impact', () => {
+  it('tips are sorted by annualSavingKg descending', () => {
+    const tips = rankTips(HIGH_TRANSPORT_PROFILE);
+    for (let i = 0; i < tips.length - 1; i++) {
+      expect(tips[i].annualSavingKg).toBeGreaterThanOrEqual(tips[i + 1].annualSavingKg);
+    }
+  });
+
+  it('top tip for high-transport profile is a transport tip', () => {
+    const tips = rankTips(HIGH_TRANSPORT_PROFILE);
+    expect(tips[0].category).toBe('transport');
+  });
+
+  it('top tip for high-diet profile is a diet tip', () => {
+    const tips = rankTips(HIGH_DIET_PROFILE);
+    expect(tips[0].category).toBe('diet');
+  });
+
+  it('different profiles produce different tip orderings', () => {
+    const transportTips = rankTips(HIGH_TRANSPORT_PROFILE);
+    const dietTips = rankTips(HIGH_DIET_PROFILE);
+    expect(transportTips[0].category).not.toBe(dietTips[0].category);
+  });
+});
+
+// ─── getTopTips ───────────────────────────────────────────────────────────
+describe('getTopTips', () => {
+  it('returns exactly N tips when asked for N', () => {
+    expect(getTopTips(HIGH_TRANSPORT_PROFILE, 3).length).toBe(3);
+    expect(getTopTips(HIGH_TRANSPORT_PROFILE, 5).length).toBe(5);
+  });
+
+  it('returns all tips when N exceeds total tip count', () => {
+    const all = rankTips(HIGH_TRANSPORT_PROFILE);
+    const top = getTopTips(HIGH_TRANSPORT_PROFILE, 999);
+    expect(top.length).toBe(all.length);
+  });
+
+  it('default N returns 5 tips', () => {
+    expect(getTopTips(BALANCED_PROFILE).length).toBe(5);
+  });
+
+  it('top 5 tips cover at least 2 different categories', () => {
+    const tips = getTopTips(BALANCED_PROFILE, 5);
+    const categories = new Set(tips.map(t => t.category));
+    expect(categories.size).toBeGreaterThanOrEqual(2);
+  });
+});
+```
+
+---
+
+## FILE 4: `ecotrace/src/test/progressAnalyzer.test.js`
+Tests moving average, linear regression trend, and streak detection.
+
+```js
+import { describe, it, expect } from 'vitest';
+import {
+  calculateMovingAverage,
+  calculateTrend,
+  calculateStreak,
+  getProgressSummary,
+} from '../algorithms/progressAnalyzer.js';
+
+// ─── Shared fixtures ───────────────────────────────────────────────────────
+const FLAT_LOGS = [
+  { date: '2024-01-01', total: 5.0 },
+  { date: '2024-01-02', total: 5.0 },
+  { date: '2024-01-03', total: 5.0 },
+  { date: '2024-01-04', total: 5.0 },
+  { date: '2024-01-05', total: 5.0 },
+  { date: '2024-01-06', total: 5.0 },
+  { date: '2024-01-07', total: 5.0 },
+];
+
+const DOWNWARD_LOGS = [
+  { date: '2024-01-01', total: 10.0 },
+  { date: '2024-01-02', total: 9.0 },
+  { date: '2024-01-03', total: 8.0 },
+  { date: '2024-01-04', total: 7.0 },
+  { date: '2024-01-05', total: 6.0 },
+  { date: '2024-01-06', total: 5.0 },
+  { date: '2024-01-07', total: 4.0 },
+];
+
+const UPWARD_LOGS = [
+  { date: '2024-01-01', total: 3.0 },
+  { date: '2024-01-02', total: 4.5 },
+  { date: '2024-01-03', total: 6.0 },
+  { date: '2024-01-04', total: 7.5 },
+  { date: '2024-01-05', total: 9.0 },
+];
+
+const STREAK_LOGS = [
+  { date: '2024-01-01', total: 8.0 },  // above threshold
+  { date: '2024-01-02', total: 3.0 },  // good
+  { date: '2024-01-03', total: 2.5 },  // good
+  { date: '2024-01-04', total: 2.0 },  // good
+  { date: '2024-01-05', total: 1.8 },  // good
+];
+
+// ─── calculateMovingAverage ────────────────────────────────────────────────
+describe('calculateMovingAverage', () => {
+  it('returns same length array as input', () => {
+    const result = calculateMovingAverage(FLAT_LOGS, 3);
+    expect(result.length).toBe(FLAT_LOGS.length);
+  });
+
+  it('returns 5.0 for all points on flat data', () => {
+    const result = calculateMovingAverage(FLAT_LOGS, 3);
+    result.forEach(v => expect(Math.abs(v - 5.0)).toBeLessThan(0.01));
+  });
+
+  it('smooths a noisy signal (output variance < input variance)', () => {
+    const noisy = [
+      { date: '2024-01-01', total: 1 },
+      { date: '2024-01-02', total: 9 },
+      { date: '2024-01-03', total: 2 },
+      { date: '2024-01-04', total: 8 },
+      { date: '2024-01-05', total: 3 },
+      { date: '2024-01-06', total: 7 },
+      { date: '2024-01-07', total: 4 },
+    ];
+    const smoothed = calculateMovingAverage(noisy, 3);
+    const inputVariance = noisy.reduce((s, p) => s + Math.pow(p.total - 5, 2), 0);
+    const mean = smoothed.reduce((s, v) => s + v, 0) / smoothed.length;
+    const outputVariance = smoothed.reduce((s, v) => s + Math.pow(v - mean, 2), 0);
+    expect(outputVariance).toBeLessThan(inputVariance);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(calculateMovingAverage([], 3)).toHaveLength(0);
+  });
+
+  it('handles window larger than data length gracefully', () => {
+    const result = calculateMovingAverage(FLAT_LOGS.slice(0, 2), 7);
+    expect(result.length).toBe(2);
+    result.forEach(v => expect(Number.isFinite(v)).toBe(true));
+  });
+});
+
+// ─── calculateTrend (linear regression) ───────────────────────────────────
+describe('calculateTrend', () => {
+  it('returns an object with slope and direction', () => {
+    const result = calculateTrend(FLAT_LOGS);
+    expect(result).toHaveProperty('slope');
+    expect(result).toHaveProperty('direction');
+  });
+
+  it('slope is ~0 for flat data', () => {
+    const result = calculateTrend(FLAT_LOGS);
+    expect(Math.abs(result.slope)).toBeLessThan(0.1);
+  });
+
+  it('slope is negative for downward trend', () => {
+    const result = calculateTrend(DOWNWARD_LOGS);
+    expect(result.slope).toBeLessThan(0);
+  });
+
+  it('slope is positive for upward trend', () => {
+    const result = calculateTrend(UPWARD_LOGS);
+    expect(result.slope).toBeGreaterThan(0);
+  });
+
+  it('direction is "improving" for downward trend', () => {
+    const result = calculateTrend(DOWNWARD_LOGS);
+    expect(result.direction).toBe('improving');
+  });
+
+  it('direction is "worsening" for upward trend', () => {
+    const result = calculateTrend(UPWARD_LOGS);
+    expect(result.direction).toBe('worsening');
+  });
+
+  it('direction is "stable" for flat data', () => {
+    const result = calculateTrend(FLAT_LOGS);
+    expect(result.direction).toBe('stable');
+  });
+
+  it('handles single data point without throwing', () => {
+    expect(() => calculateTrend([{ date: '2024-01-01', total: 5 }])).not.toThrow();
+  });
+
+  it('returns finite slope for all real inputs', () => {
+    [FLAT_LOGS, DOWNWARD_LOGS, UPWARD_LOGS].forEach(logs => {
+      expect(Number.isFinite(calculateTrend(logs).slope)).toBe(true);
+    });
+  });
+});
+
+// ─── calculateStreak ──────────────────────────────────────────────────────
+describe('calculateStreak', () => {
+  it('returns a non-negative integer', () => {
+    const result = calculateStreak(STREAK_LOGS);
+    expect(Number.isInteger(result)).toBe(true);
+    expect(result).toBeGreaterThanOrEqual(0);
+  });
+
+  it('returns 0 for empty logs', () => {
+    expect(calculateStreak([])).toBe(0);
+  });
+
+  it('counts consecutive low-emission days at end of log', () => {
+    // last 4 entries in STREAK_LOGS are all good days
+    const result = calculateStreak(STREAK_LOGS);
+    expect(result).toBeGreaterThanOrEqual(4);
+  });
+
+  it('streak resets when a high-emission day appears', () => {
+    const logs = [
+      { date: '2024-01-01', total: 2.0 },
+      { date: '2024-01-02', total: 2.0 },
+      { date: '2024-01-03', total: 15.0 }, // bad day
+      { date: '2024-01-04', total: 2.0 },
+      { date: '2024-01-05', total: 2.0 },
+    ];
+    const result = calculateStreak(logs);
+    expect(result).toBeLessThanOrEqual(2);
+  });
+
+  it('perfect streak across all days returns total day count', () => {
+    const allGood = Array.from({ length: 10 }, (_, i) => ({
+      date: `2024-01-${String(i + 1).padStart(2, '0')}`,
+      total: 1.5,
+    }));
+    expect(calculateStreak(allGood)).toBe(10);
+  });
+});
+
+// ─── getProgressSummary ────────────────────────────────────────────────────
+describe('getProgressSummary', () => {
+  it('returns an object with expected keys', () => {
+    const result = getProgressSummary(DOWNWARD_LOGS);
+    expect(result).toHaveProperty('trend');
+    expect(result).toHaveProperty('streak');
+    expect(result).toHaveProperty('weeklyAverage');
+    expect(result).toHaveProperty('bestDay');
+  });
+
+  it('weeklyAverage is the mean of totals', () => {
+    const result = getProgressSummary(FLAT_LOGS);
+    expect(Math.abs(result.weeklyAverage - 5.0)).toBeLessThan(0.01);
+  });
+
+  it('bestDay is the entry with the lowest total', () => {
+    const result = getProgressSummary(DOWNWARD_LOGS);
+    // last day (total: 4.0) is best
+    expect(result.bestDay.total).toBe(4.0);
+  });
+
+  it('handles single day without throwing', () => {
+    expect(() => getProgressSummary([{ date: '2024-01-01', total: 3.0 }])).not.toThrow();
+  });
+});
+```
+
+---
+
+## FILE 5: `ecotrace/src/test/emissionFactors.test.js`
+Tests the raw data integrity of the emission factors themselves.
+
+```js
+import { describe, it, expect } from 'vitest';
+import { FACTORS, CATEGORY_META } from '../data/emissionFactors.js';
+
+describe('FACTORS — data integrity', () => {
+  it('FACTORS object exists and is not empty', () => {
+    expect(FACTORS).toBeDefined();
+    expect(Object.keys(FACTORS).length).toBeGreaterThan(0);
+  });
+
+  it('all factor values are positive numbers', () => {
+    const checkObj = (obj) => {
+      Object.entries(obj).forEach(([key, val]) => {
+        if (typeof val === 'object' && val !== null) {
+          checkObj(val);
+        } else {
+          expect(typeof val).toBe('number');
+          expect(val).toBeGreaterThan(0);
+        }
+      });
+    };
+    checkObj(FACTORS);
+  });
+
+  it('india_grid electricity factor is near 0.82 kg CO2/kWh (CEA 2023)', () => {
+    const gridFactor = FACTORS?.energy?.india_grid ?? FACTORS?.electricity?.india_grid;
+    expect(gridFactor).toBeGreaterThan(0.75);
+    expect(gridFactor).toBeLessThan(0.90);
+  });
+
+  it('petrol car factor is higher than metro/train factor', () => {
+    const petrol = FACTORS?.transport?.car_petrol;
+    const metro  = FACTORS?.transport?.metro_train;
+    expect(petrol).toBeGreaterThan(metro);
+  });
+
+  it('meat_heavy diet factor is higher than vegan factor', () => {
+    const heavy = FACTORS?.diet?.meat_heavy;
+    const vegan = FACTORS?.diet?.vegan;
+    expect(heavy).toBeGreaterThan(vegan);
+  });
+});
+
+describe('CATEGORY_META — completeness', () => {
+  const EXPECTED_CATEGORIES = ['transport', 'diet', 'energy', 'shopping', 'waste'];
+
+  it('all 5 categories are present', () => {
+    EXPECTED_CATEGORIES.forEach(cat => {
+      expect(CATEGORY_META).toHaveProperty(cat);
+    });
+  });
+
+  it('each category has emoji and label', () => {
+    EXPECTED_CATEGORIES.forEach(cat => {
+      expect(CATEGORY_META[cat]).toHaveProperty('emoji');
+      expect(CATEGORY_META[cat]).toHaveProperty('label');
+      expect(typeof CATEGORY_META[cat].label).toBe('string');
+    });
+  });
+});
+```
+
+---
+
+## FILE 6: `ecotrace/src/test/TipCard.test.jsx`
+```jsx
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import TipCard from '../components/TipCard.jsx';
+
+const FULL_TIP = {
+  category: 'transport',
+  action: 'Switch to public transport',
+  difficulty: 'easy',
+  timeToImpact: 'immediate',
+  annualSavingKg: 240,
+  whyItMatters: 'Buses emit 6x less CO2 per km than solo car trips.',
+};
+
+describe('TipCard', () => {
+  it('renders action text', () => {
+    render(<TipCard tip={FULL_TIP} index={0} />);
+    expect(screen.getByText('Switch to public transport')).toBeInTheDocument();
+  });
+
+  it('renders difficulty badge', () => {
+    render(<TipCard tip={FULL_TIP} index={0} />);
+    expect(screen.getByText('easy')).toBeInTheDocument();
+  });
+
+  it('renders whyItMatters text', () => {
+    render(<TipCard tip={FULL_TIP} index={0} />);
+    expect(screen.getByText(/Buses emit/)).toBeInTheDocument();
+  });
+
+  it('shows saving amount when showSaving is true', () => {
+    render(<TipCard tip={FULL_TIP} index={0} showSaving={true} />);
+    expect(screen.getByText(/240/)).toBeInTheDocument();
+  });
+
+  it('does not show saving inline when showSaving is false', () => {
+    render(<TipCard tip={FULL_TIP} index={0} showSaving={false} />);
+    // saving still shown as -240kg on the right side
+    expect(screen.getByText(/-240kg/)).toBeInTheDocument();
+  });
+
+  it('renders without crashing when optional fields missing', () => {
+    const minimal = { category: 'diet', action: 'Eat less meat', annualSavingKg: 0 };
+    render(<TipCard tip={minimal} index={0} />);
+    expect(screen.getByText('Eat less meat')).toBeInTheDocument();
+  });
+
+  it('renders correctly for all 5 categories', () => {
+    ['transport','diet','energy','shopping','waste'].forEach(cat => {
+      const { unmount } = render(
+        <TipCard tip={{ ...FULL_TIP, category: cat }} index={0} />
+      );
+      expect(screen.getByText('Switch to public transport')).toBeInTheDocument();
+      unmount();
+    });
+  });
+});
+```
+
+---
+
+## FINAL: Update `ecotrace/vite.config.js`
+Add the test block inside defineConfig:
+
+```js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+      include: ['src/algorithms/**', 'src/components/**', 'src/data/**'],
+    },
+  },
+})
+```
+
+## FINAL: Update `package.json` scripts
+```json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:coverage": "vitest run --coverage"
+}
+```
+
+## Add to devDependencies:
+```json
+"vitest": "^1.6.0",
+"@testing-library/react": "^16.0.0",
+"@testing-library/jest-dom": "^6.4.0",
+"@testing-library/user-event": "^14.5.0",
+"@vitest/coverage-v8": "^1.6.0",
+"jsdom": "^24.0.0"
+```
+
+---
+
+## Run order
+```bash
+cd ecotrace
+npm install
+npm test
+# Expected: 50+ tests, all passing
+```

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGemini } from '../hooks/useGemini.js';
 import TipCard from '../components/TipCard.jsx';
@@ -14,11 +14,12 @@ const RATING_COLORS = {
 
 function LeafSpinner() {
   return (
-    <div className="flex flex-col items-center gap-4 py-16">
+    <div className="flex flex-col items-center gap-4 py-16" role="status" aria-live="polite">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
         className="text-6xl"
+        aria-hidden="true"
       >
         🌿
       </motion.div>
@@ -34,7 +35,7 @@ function PersonalityCard({ ecoPersonality, personalityDescription, headline }) {
       initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
       className="glass-card p-6 text-center"
     >
-      <div className="text-5xl mb-3">🧬</div>
+      <div className="text-5xl mb-3" aria-hidden="true">🧬</div>
       <h3 className="font-display text-xl font-bold text-forest-800 dark:text-cream-100 mb-1">Your Eco Personality</h3>
       <div className="inline-block bg-gold-500/20 border border-gold-500/50 text-gold-600 dark:text-gold-400 font-bold px-4 py-1 rounded-full text-sm mb-3">
         {ecoPersonality}
@@ -51,7 +52,7 @@ function ScoreCard({ score }) {
   const color = RATING_COLORS[score?.rating] || '#DAA520';
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5">
-      <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-3 text-sm">📊 AI Score Assessment</h3>
+      <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-3 text-sm"><span aria-hidden="true">📊</span> AI Score Assessment</h3>
       <div className="flex items-center gap-4">
         <div className="text-center">
           <div className="font-display text-4xl font-black" style={{ color }}>{score?.percentile ?? '—'}</div>
@@ -75,14 +76,14 @@ function ScoreCard({ score }) {
 function GoalCard({ weeklyGoal, monthlyChallenge }) {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-5">
-      <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">🎯 Your Goals</h3>
+      <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm"><span aria-hidden="true">🎯</span> Your Goals</h3>
       <div className="space-y-3">
         <div className="p-3 rounded-xl bg-forest-800/10 dark:bg-cream-100/5 border border-forest-700/20">
-          <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1">📅 This week</div>
+          <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1"><span aria-hidden="true">📅</span> This week</div>
           <p className="text-sm font-medium text-forest-800 dark:text-cream-100">{weeklyGoal}</p>
         </div>
         <div className="p-3 rounded-xl bg-gold-500/10 border border-gold-500/30">
-          <div className="text-xs text-gold-600 dark:text-gold-400 mb-1">🏆 Monthly challenge</div>
+          <div className="text-xs text-gold-600 dark:text-gold-400 mb-1"><span aria-hidden="true">🏆</span> Monthly challenge</div>
           <p className="text-sm font-medium text-forest-800 dark:text-cream-100">{monthlyChallenge}</p>
         </div>
       </div>
@@ -95,7 +96,7 @@ function FunFactCard({ funFact, motivationalMessage }) {
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-5">
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">🌍</span>
+          <span className="text-xl" aria-hidden="true">🌍</span>
           <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 text-sm">Fun Fact</h3>
         </div>
         <p className="text-sm text-forest-700/80 dark:text-cream-200/70 leading-relaxed italic">"{funFact}"</p>
@@ -103,7 +104,7 @@ function FunFactCard({ funFact, motivationalMessage }) {
       <hr className="border-forest-800/10 dark:border-cream-100/10 mb-4" />
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">💪</span>
+          <span className="text-xl" aria-hidden="true">💪</span>
           <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 text-sm">Your Motivation</h3>
         </div>
         <p className="text-sm text-forest-700/80 dark:text-cream-200/70 leading-relaxed">{motivationalMessage}</p>
@@ -113,6 +114,8 @@ function FunFactCard({ funFact, motivationalMessage }) {
 }
 
 export default function Insights({ footprintData, logs = [] }) {
+  useEffect(() => { document.title = 'AI Insights | EcoTrace'; }, []);
+
   const [insights, setInsights] = useState(() => {
     // Load cached insights on mount
     try {
@@ -143,7 +146,7 @@ export default function Insights({ footprintData, logs = [] }) {
     return (
       <div className="min-h-screen pt-24 pb-16 px-4 bg-cream-100 dark:bg-forest-900 flex items-center justify-center">
         <div className="text-center glass-card p-10 max-w-sm">
-          <span className="text-6xl block mb-4">🤖</span>
+          <span className="text-6xl block mb-4" aria-hidden="true">🤖</span>
           <h2 className="font-display text-2xl font-bold text-forest-800 dark:text-cream-100 mb-2">Complete the Quiz First</h2>
           <p className="text-forest-700/70 dark:text-cream-200/60 text-sm">EcoCoach needs your footprint data to analyse.</p>
         </div>
@@ -155,26 +158,26 @@ export default function Insights({ footprintData, logs = [] }) {
     <div className="min-h-screen pt-24 pb-16 px-4 bg-cream-100 dark:bg-forest-900">
       <div className="max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">AI Insights 🤖</h1>
+          <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">AI Insights <span aria-hidden="true">🤖</span></h1>
           <p className="text-forest-700/60 dark:text-cream-200/50 text-sm mt-1">Powered by Google Gemini</p>
         </motion.div>
 
         {/* CTA — shown when no insights yet */}
         {!insights && !loading && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 text-center mb-6">
-            <span className="text-6xl block mb-4">🌿</span>
+            <span className="text-6xl block mb-4" aria-hidden="true">🌿</span>
             <h2 className="font-display text-2xl font-bold text-forest-800 dark:text-cream-100 mb-2">Meet EcoCoach</h2>
             <p className="text-sm text-forest-700/70 dark:text-cream-200/60 mb-6 max-w-sm mx-auto leading-relaxed">
               Your personal AI climate scientist. Get your eco personality, top 5 personalised tips, weekly goals, and a fun climate fact.
             </p>
             <button onClick={handleAnalyze} className="btn-primary text-base px-8 py-4 w-full sm:w-auto">
-              🔍 Analyse My Footprint with Gemini AI
+              <span aria-hidden="true">🔍</span> Analyse My Footprint with Gemini AI
             </button>
 
             {/* Error display with actionable help */}
             {error && (
-              <div className="mt-5 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 text-left">
-                <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">⚠️ Analysis failed</p>
+              <div className="mt-5 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 text-left" role="alert">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1"><span aria-hidden="true">⚠️</span> Analysis failed</p>
                 <p className="text-xs text-red-600 dark:text-red-400 mb-3">{error}</p>
                 <div className="text-xs text-red-600/80 dark:text-red-400/80 space-y-1">
                   <p>• Check your Gemini API key is valid at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">aistudio.google.com</a></p>
@@ -182,7 +185,7 @@ export default function Insights({ footprintData, logs = [] }) {
                   <p>• Free-tier keys work — no billing needed</p>
                 </div>
                 <button onClick={handleAnalyze} className="mt-3 btn-secondary text-sm py-2 px-4">
-                  🔄 Try Again
+                  <span aria-hidden="true">🔄</span> Try Again
                 </button>
               </div>
             )}
@@ -205,7 +208,7 @@ export default function Insights({ footprintData, logs = [] }) {
 
               <div className="glass-card p-5">
                 <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-                  💡 Top 5 Personalised Tips
+                  <span aria-hidden="true">💡</span> Top 5 Personalised Tips
                 </h3>
                 <div className="space-y-3">
                   {(insights.top5Tips ?? []).map((tip, i) => (
@@ -218,7 +221,7 @@ export default function Insights({ footprintData, logs = [] }) {
               <FunFactCard funFact={insights.funFact} motivationalMessage={insights.motivationalMessage} />
 
               <button onClick={handleAnalyze} className="btn-ghost w-full text-sm">
-                🔄 Re-analyse (refreshes AI response)
+                <span aria-hidden="true">🔄</span> Re-analyse (refreshes AI response)
               </button>
             </motion.div>
           )}

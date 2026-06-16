@@ -97,6 +97,33 @@
   transition: transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Accessible focus rings */
+*:focus-visible {
+  outline: 2px solid #2d6a4f;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  background: #2d5016;
+  color: #F5F0E8;
+  padding: 8px 16px;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+}
+
 /* Remove Vite/scaffold defaults */
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
