@@ -1,157 +1,125 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FACTORS } from '../data/emissionFactors.js';
+import { calculateDailyLog } from '../algorithms/carbonCalculator.js';
 
-const TRANSPORT_OPTIONS = [
-  { value: 'car_petrol', label: 'Petrol Car', emoji: '⛽' },
-  { value: 'car_diesel', label: 'Diesel Car', emoji: '🚙' },
-  { value: 'car_cng',    label: 'CNG Car',    emoji: '🌿' },
-  { value: 'two_wheeler',label: 'Two-Wheeler',emoji: '🛵' },
-  { value: 'bus',        label: 'Bus',        emoji: '🚌' },
-  { value: 'metro_train',label: 'Metro',      emoji: '🚇' },
-  { value: 'train',      label: 'Train',      emoji: '🚂' },
-];
-
-const DIET_OPTIONS = [
-  { value: 'vegan',          label: 'Vegan meal',      emoji: '🌱', factor: FACTORS.diet.vegan / 3 },
-  { value: 'vegetarian',     label: 'Vegetarian meal', emoji: '🥦', factor: FACTORS.diet.vegetarian / 3 },
-  { value: 'meat_occasional',label: 'Light meat meal', emoji: '🐟', factor: FACTORS.diet.meat_occasional / 3 },
-  { value: 'meat_regular',   label: 'Regular meal',    emoji: '🍗', factor: FACTORS.diet.meat_regular / 3 },
-  { value: 'meat_heavy',     label: 'Heavy meat meal', emoji: '🥩', factor: FACTORS.diet.meat_heavy / 3 },
-];
-
-const ENERGY_OPTIONS = [
-  { value: 'india_grid', label: 'Grid electricity', emoji: '🔌', factor: FACTORS.energy.india_grid },
-  { value: 'solar',      label: 'Solar power',      emoji: '☀️', factor: FACTORS.energy.solar },
-];
+const ACTIVITY_OPTIONS = {
+  transport: [
+    { value: 'car_petrol', label: 'Petrol Car', emoji: '🚗', unit: 'km' },
+    { value: 'car_diesel', label: 'Diesel Car', emoji: '🚙', unit: 'km' },
+    { value: 'car_cng', label: 'CNG Car', emoji: '🌿', unit: 'km' },
+    { value: 'two_wheeler', label: 'Two Wheeler', emoji: '🏍️', unit: 'km' },
+    { value: 'bus', label: 'Bus', emoji: '🚌', unit: 'km' },
+    { value: 'metro_train', label: 'Metro/Train', emoji: '🚇', unit: 'km' },
+  ],
+  diet: [
+    { value: 'vegan', label: 'Vegan Meal', emoji: '🌱', unit: 'meal' },
+    { value: 'vegetarian', label: 'Vegetarian Meal', emoji: '🥦', unit: 'meal' },
+    { value: 'meat_occasional', label: 'Meat Meal (light)', emoji: '🍗', unit: 'meal' },
+    { value: 'meat_regular', label: 'Meat Meal (regular)', emoji: '🥩', unit: 'meal' },
+    { value: 'meat_heavy', label: 'Heavy Meat Meal', emoji: '🍖', unit: 'meal' },
+  ],
+  energy: [
+    { value: 'india_grid', label: 'Electricity (India Grid)', emoji: '🔌', unit: 'kWh' },
+    { value: 'solar', label: 'Solar Energy', emoji: '☀️', unit: 'kWh' },
+  ],
+  shopping: [
+    { value: 'clothing', label: 'Clothing Item', emoji: '👕', unit: 'item' },
+    { value: 'electronics', label: 'Electronics', emoji: '📱', unit: 'item' },
+    { value: 'groceries', label: 'Grocery Run', emoji: '🛒', unit: 'trip' },
+    { value: 'online_order', label: 'Online Order', emoji: '📦', unit: 'order' },
+  ],
+  waste: [
+    { value: 'recycles_most', label: 'Recycled Waste', emoji: '♻️', unit: 'bag' },
+    { value: 'recycles_some', label: 'Mixed Waste', emoji: '🗑️', unit: 'bag' },
+    { value: 'no_recycling', label: 'Landfill Waste', emoji: '❌', unit: 'bag' },
+  ],
+};
 
 export default function ActivityForm({ onAdd, category }) {
-  const [type, setType] = useState('');
+  const options = ACTIVITY_OPTIONS[category] || [];
+  const [selected, setSelected] = useState(options[0]?.value || '');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
 
-  const getEmission = () => {
-    if (category === 'transport' && type && value) {
-      return ((FACTORS.transport[type] || 0) * Number(value)).toFixed(2);
-    }
-    if (category === 'diet' && type) {
-      const opt = DIET_OPTIONS.find((o) => o.value === type);
-      return opt ? opt.factor.toFixed(2) : '0';
-    }
-    if (category === 'energy' && type && value) {
-      const opt = ENERGY_OPTIONS.find((o) => o.value === type);
-      return opt ? (opt.factor * Number(value)).toFixed(2) : '0';
-    }
-    if (category === 'shopping' && value) {
-      return (Number(value) * 2.5).toFixed(2);
-    }
-    return '0';
+  const selectedOpt = options.find(o => o.value === selected);
+  const needsValue = ['transport', 'energy'].includes(category);
+
+  const getPreviewCO2 = () => {
+    if (!selected) return 0;
+    const entries = [{ category, type: selected, value: needsValue ? Number(value) || 1 : 1, note }];
+    return calculateDailyLog(entries).total;
   };
 
   const handleAdd = () => {
-    const co2 = parseFloat(getEmission());
-    if (category !== 'diet' && !value) return;
-    if ((category === 'transport' || category === 'diet' || category === 'energy') && !type) return;
-
-    onAdd({
-      category,
-      type: type || category,
-      value: value || '1',
-      note,
-      co2,
-    });
-    setType('');
+    if (!selected) return;
+    if (needsValue && (!value || Number(value) <= 0)) return;
+    const co2 = getPreviewCO2();
+    onAdd({ category, type: selected, value: needsValue ? Number(value) : 1, note, co2 });
     setValue('');
     setNote('');
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-4 space-y-3"
-    >
-      {/* Transport */}
-      {category === 'transport' && (
-        <>
-          <select
-            value={type} onChange={(e) => setType(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
+    <div className="glass-card p-5 space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setSelected(opt.value)}
+            className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium text-left transition-all
+              ${selected === opt.value
+                ? 'border-forest-700 bg-forest-800/10 dark:bg-forest-700/30 text-forest-900 dark:text-cream-100'
+                : 'border-forest-800/15 dark:border-cream-100/15 text-forest-700 dark:text-cream-200/70 hover:border-forest-700/40'
+              }`}
           >
-            <option value="">Select vehicle type</option>
-            {TRANSPORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.emoji} {o.label}</option>
-            ))}
-          </select>
-          <input
-            type="number" min="0" max="500" value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Distance in km"
-            className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-          />
-        </>
-      )}
-
-      {/* Diet */}
-      {category === 'diet' && (
-        <select
-          value={type} onChange={(e) => setType(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-        >
-          <option value="">Select meal type</option>
-          {DIET_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.emoji} {o.label}</option>
-          ))}
-        </select>
-      )}
-
-      {/* Energy */}
-      {category === 'energy' && (
-        <>
-          <select
-            value={type} onChange={(e) => setType(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-          >
-            <option value="">Select energy source</option>
-            {ENERGY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.emoji} {o.label}</option>
-            ))}
-          </select>
-          <input
-            type="number" min="0" value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="kWh used today"
-            className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-          />
-        </>
-      )}
-
-      {/* Shopping */}
-      {category === 'shopping' && (
-        <input
-          type="number" min="0" value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Amount spent (₹ × 100 ≈ kg CO₂)"
-          className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-        />
-      )}
-
-      {/* Note */}
-      <input
-        type="text" value={note} onChange={(e) => setNote(e.target.value)}
-        placeholder="Optional note..."
-        className="w-full px-3 py-2 rounded-xl border border-forest-800/20 dark:border-forest-600/40 bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100 text-sm focus:outline-none focus:ring-2 focus:ring-forest-700"
-      />
-
-      {/* Preview + Add */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-forest-700/70 dark:text-cream-200/60">
-          ≈ <strong className="text-forest-800 dark:text-gold-400">{getEmission()} kg CO₂</strong>
-        </span>
-        <button onClick={handleAdd} className="btn-primary py-2 px-4 text-sm">
-          + Add Entry
-        </button>
+            <span>{opt.emoji}</span>
+            <span className="truncate">{opt.label}</span>
+          </button>
+        ))}
       </div>
-    </motion.div>
+
+      {needsValue && (
+        <div>
+          <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1">
+            {selectedOpt?.unit === 'km' ? 'Distance (km)' : 'Amount (kWh)'}
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={selectedOpt?.unit === 'km' ? 'e.g. 15' : 'e.g. 5'}
+            className="w-full px-4 py-3 rounded-xl border-2 border-forest-800/15 dark:border-cream-100/15
+                       bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100
+                       focus:outline-none focus:border-forest-700"
+          />
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1">
+          Note (optional)
+        </label>
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. Morning commute"
+          className="w-full px-4 py-3 rounded-xl border-2 border-forest-800/15 dark:border-cream-100/15
+                     bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100
+                     focus:outline-none focus:border-forest-700 text-sm"
+        />
+      </div>
+
+      {selected && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-forest-700/60 dark:text-cream-200/50">
+            CO₂ impact: <strong className="text-forest-800 dark:text-gold-400">{getPreviewCO2().toFixed(3)} kg</strong>
+          </span>
+          <button onClick={handleAdd} className="btn-primary py-2 px-6 text-sm">
+            + Add Entry
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { calculateDailyLog } from '../algorithms/carbonCalculator.js';
 import { CATEGORY_META } from '../data/emissionFactors.js';
 import { useFirestore } from '../hooks/useFirestore.js';
 
-const CATEGORIES = ['transport', 'diet', 'energy', 'shopping'];
+const CATEGORIES = ['transport', 'diet', 'energy', 'shopping', 'waste'];
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];

@@ -3,75 +3,70 @@ import { motion } from 'framer-motion';
 import { CATEGORY_META } from '../data/emissionFactors.js';
 
 const DIFFICULTY_COLORS = {
-  easy:   'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  hard:   'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+  easy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  hard: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const TIME_COLORS = {
-  immediate: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  weeks:     'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-  months:    'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+const TIME_LABELS = {
+  immediate: '⚡ Immediate',
+  weeks: '📅 Weeks',
+  months: '🗓️ Months',
 };
 
-export default function TipCard({ tip, index = 0, showSaving = true }) {
-  const meta = CATEGORY_META[tip.category] || { label: tip.category, emoji: '💡' };
+export default function TipCard({ tip, index, showSaving = false }) {
+  const meta = CATEGORY_META[tip.category];
+  const action = tip.action || tip.tip;
+  const saving = tip.annualSavingKg;
+  const whyItMatters = tip.whyItMatters;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.08 }}
-      className="glass-card p-4 hover:shadow-xl transition-shadow duration-200 group"
+      className="flex items-start gap-3 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5 
+                 border border-forest-800/10 dark:border-cream-100/10"
     >
-      <div className="flex items-start gap-3">
-        {/* Category icon */}
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 mt-0.5"
-          style={{ backgroundColor: meta.color + '20' }}
-        >
-          {meta.emoji}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {/* Action */}
-          <p className="text-sm font-medium text-forest-900 dark:text-cream-100 leading-snug mb-2">
-            {tip.action || tip.tip}
+      <div className="w-8 h-8 rounded-lg bg-forest-800/10 dark:bg-cream-100/10 
+                      flex items-center justify-center text-base shrink-0 mt-0.5">
+        {meta?.emoji || '💡'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-forest-900 dark:text-cream-100 leading-snug">
+          {action}
+        </p>
+        {whyItMatters && (
+          <p className="text-xs text-forest-700/60 dark:text-cream-200/50 mt-1 leading-relaxed">
+            {whyItMatters}
           </p>
-
-          {/* Why it matters */}
-          {tip.whyItMatters && (
-            <p className="text-xs text-forest-700/70 dark:text-cream-200/60 mb-2 leading-relaxed">
-              {tip.whyItMatters}
-            </p>
-          )}
-
-          {/* Tags row */}
-          <div className="flex flex-wrap gap-1.5">
-            <span className={`badge ${DIFFICULTY_COLORS[tip.difficulty]}`}>
+        )}
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          {tip.difficulty && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DIFFICULTY_COLORS[tip.difficulty]}`}>
               {tip.difficulty}
             </span>
-            {tip.timeToImpact && (
-              <span className={`badge ${TIME_COLORS[tip.timeToImpact]}`}>
-                {tip.timeToImpact}
-              </span>
-            )}
-            <span className="badge bg-forest-800/10 dark:bg-cream-100/10 text-forest-700 dark:text-cream-200">
-              {meta.label}
+          )}
+          {tip.timeToImpact && (
+            <span className="text-xs text-forest-700/60 dark:text-cream-200/40">
+              {TIME_LABELS[tip.timeToImpact] || tip.timeToImpact}
             </span>
-          </div>
+          )}
+          {showSaving && saving > 0 && (
+            <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+              Saves ~{saving} kg CO₂/yr
+            </span>
+          )}
         </div>
-
-        {/* Saving */}
-        {showSaving && tip.annualSavingKg > 0 && (
-          <div className="shrink-0 text-right">
-            <div className="text-lg font-bold font-display text-forest-800 dark:text-gold-400">
-              -{tip.annualSavingKg}
-            </div>
-            <div className="text-xs text-forest-700/60 dark:text-cream-200/50">kg/yr</div>
-          </div>
-        )}
       </div>
+      {!showSaving && saving > 0 && (
+        <div className="text-right shrink-0">
+          <div className="text-sm font-bold text-forest-800 dark:text-gold-400">
+            -{saving}kg
+          </div>
+          <div className="text-xs text-forest-700/50 dark:text-cream-200/40">CO₂/yr</div>
+        </div>
+      )}
     </motion.div>
   );
 }
