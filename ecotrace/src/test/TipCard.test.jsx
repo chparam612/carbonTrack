@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import TipCard from '../components/TipCard.jsx';
 
-const mockTip = {
+const FULL_TIP = {
   category: 'transport',
   action: 'Switch to public transport',
   difficulty: 'easy',
@@ -12,24 +12,44 @@ const mockTip = {
 };
 
 describe('TipCard', () => {
-  it('renders the tip action text', () => {
-    render(<TipCard tip={mockTip} index={0} />);
+  it('renders action text', () => {
+    render(<TipCard tip={FULL_TIP} index={0} />);
     expect(screen.getByText('Switch to public transport')).toBeInTheDocument();
   });
 
   it('renders difficulty badge', () => {
-    render(<TipCard tip={mockTip} index={0} />);
+    render(<TipCard tip={FULL_TIP} index={0} />);
     expect(screen.getByText('easy')).toBeInTheDocument();
   });
 
-  it('shows annual saving when showSaving is true', () => {
-    render(<TipCard tip={mockTip} index={0} showSaving={true} />);
+  it('renders whyItMatters text', () => {
+    render(<TipCard tip={FULL_TIP} index={0} />);
+    expect(screen.getByText(/Buses emit/)).toBeInTheDocument();
+  });
+
+  it('shows saving amount when showSaving is true', () => {
+    render(<TipCard tip={FULL_TIP} index={0} showSaving={true} />);
     expect(screen.getByText(/240/)).toBeInTheDocument();
   });
 
-  it('renders without crashing when optional fields are missing', () => {
-    const minimalTip = { category: 'diet', action: 'Eat less meat', annualSavingKg: 0 };
-    render(<TipCard tip={minimalTip} index={0} />);
+  it('does not show saving inline when showSaving is false', () => {
+    render(<TipCard tip={FULL_TIP} index={0} showSaving={false} />);
+    expect(screen.getByText(/-240kg/)).toBeInTheDocument();
+  });
+
+  it('renders without crashing when optional fields missing', () => {
+    const minimal = { category: 'diet', action: 'Eat less meat', annualSavingKg: 0 };
+    render(<TipCard tip={minimal} index={0} />);
     expect(screen.getByText('Eat less meat')).toBeInTheDocument();
+  });
+
+  it('renders correctly for all 5 categories', () => {
+    ['transport','diet','energy','shopping','waste'].forEach(cat => {
+      const { unmount } = render(
+        <TipCard tip={{ ...FULL_TIP, category: cat }} index={0} />
+      );
+      expect(screen.getByText('Switch to public transport')).toBeInTheDocument();
+      unmount();
+    });
   });
 });
