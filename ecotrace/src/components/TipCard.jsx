@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { CATEGORY_META } from '../data/emissionFactors.js';
 import { DIFFICULTY_COLORS, TIME_LABELS } from '../utils/constants.js';
 
+/**
+ * @param {{ tip: Object, index: number, showSaving?: boolean }} props
+ */
 export default function TipCard({ tip, index, showSaving = false }) {
   const meta = CATEGORY_META[tip.category];
   const action = tip.action || tip.tip;

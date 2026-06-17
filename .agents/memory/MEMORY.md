@@ -1,0 +1,1 @@
+- [React version mismatch in ecotrace](react-version-mismatch.md) — root node_modules has React 19, ecotrace/node_modules has React 18; vite alias must point to LOCAL modules for tests to pass

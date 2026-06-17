@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 
 const FEATURES = [
@@ -19,7 +20,12 @@ const FEATURES = [
   },
 ];
 
-// Leaf particle system
+const SCIENCE_SOURCES = [
+  { icon: '🌍', name: 'IPCC AR6',       detail: 'Transport & diet emission factors' },
+  { icon: '🏭', name: 'US EPA 2023',    detail: 'Waste & shopping emission factors' },
+  { icon: '⚡', name: 'India CEA 2023', detail: 'Grid: 0.82 kg CO₂/kWh' },
+];
+
 function LeafCanvas() {
   const canvasRef = useRef(null);
 
@@ -37,39 +43,38 @@ function LeafCanvas() {
 
     const particles = Array.from({ length: 30 }, () => createLeaf(canvas));
 
-    function createLeaf(canvas) {
+    function createLeaf(c) {
       return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: Math.random() * c.width,
+        y: Math.random() * c.height,
         size: 8 + Math.random() * 14,
         speedX: (Math.random() - 0.5) * 0.6,
         speedY: 0.3 + Math.random() * 0.5,
         rotation: Math.random() * Math.PI * 2,
         rotSpeed: (Math.random() - 0.5) * 0.03,
         opacity: 0.15 + Math.random() * 0.3,
-        color: ['#2d5016', '#3d6b1f', '#DAA520', '#8B4513'][Math.floor(Math.random() * 4)],
+        color: ['#0f3d26', '#3d6b1f', '#DAA520', '#8B4513'][Math.floor(Math.random() * 4)],
       };
     }
 
-    function drawLeaf(ctx, p) {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-      ctx.globalAlpha = p.opacity;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.moveTo(0, -p.size / 2);
-      ctx.bezierCurveTo(p.size / 2, -p.size / 2, p.size / 2, p.size / 2, 0, p.size / 2);
-      ctx.bezierCurveTo(-p.size / 2, p.size / 2, -p.size / 2, -p.size / 2, 0, -p.size / 2);
-      ctx.fill();
-      // Stem
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, -p.size / 2);
-      ctx.lineTo(0, p.size / 2);
-      ctx.stroke();
-      ctx.restore();
+    function drawLeaf(c, p) {
+      c.save();
+      c.translate(p.x, p.y);
+      c.rotate(p.rotation);
+      c.globalAlpha = p.opacity;
+      c.fillStyle = p.color;
+      c.beginPath();
+      c.moveTo(0, -p.size / 2);
+      c.bezierCurveTo(p.size / 2, -p.size / 2, p.size / 2, p.size / 2, 0, p.size / 2);
+      c.bezierCurveTo(-p.size / 2, p.size / 2, -p.size / 2, -p.size / 2, 0, -p.size / 2);
+      c.fill();
+      c.strokeStyle = p.color;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(0, -p.size / 2);
+      c.lineTo(0, p.size / 2);
+      c.stroke();
+      c.restore();
     }
 
     let animId;
@@ -98,12 +103,10 @@ function LeafCanvas() {
   return <canvas ref={canvasRef} id="leaf-canvas" aria-hidden="true" />;
 }
 
-// Live CO₂ counter
 function CO2Counter() {
   const [ppm, setPpm] = useState(422.0);
 
   useEffect(() => {
-    // CO₂ rises ~2.4 ppm/year ≈ 7.6e-8 ppm/second
     const interval = setInterval(() => {
       setPpm((prev) => parseFloat((prev + 0.0000001).toFixed(7)));
     }, 1000);
@@ -116,12 +119,15 @@ function CO2Counter() {
       animate={{ scale: 1, opacity: 1 }}
       transition={{ delay: 0.6 }}
       className="inline-flex items-center gap-3 glass-card px-5 py-3 mx-auto"
+      role="status"
+      aria-label={`Live atmospheric CO₂: ${ppm.toFixed(1)} parts per million`}
+      aria-live="off"
     >
       <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
       <span className="text-sm font-medium text-forest-800 dark:text-cream-100">
         Live atmospheric CO₂:
       </span>
-      <span className="font-display font-bold text-xl text-red-600 dark:text-red-400">
+      <span className="font-display font-bold text-xl text-red-600 dark:text-red-400" aria-hidden="true">
         {ppm.toFixed(1)} ppm
       </span>
     </motion.div>
@@ -129,7 +135,7 @@ function CO2Counter() {
 }
 
 export default function Home({ setCurrentPage }) {
-  useEffect(() => { document.title = 'EcoTrace — Know Your Carbon'; }, []);
+  useEffect(() => { document.title = 'EcoTrace — Know Your Carbon. Change Your Future.'; }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -149,7 +155,7 @@ export default function Home({ setCurrentPage }) {
               Change Your Future.
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-forest-700/80 dark:text-cream-200/70 max-w-xl mx-auto mb-8 font-body">
+          <p className="text-lg md:text-xl text-forest-700 dark:text-cream-200 max-w-xl mx-auto mb-8 font-body">
             Track your carbon footprint with scientific precision. Get AI-powered insights.
             Build habits that heal the planet.
           </p>
@@ -164,12 +170,14 @@ export default function Home({ setCurrentPage }) {
           className="mt-8 flex flex-col sm:flex-row gap-4"
         >
           <button
+            type="button"
             onClick={() => setCurrentPage('quiz')}
             className="btn-primary text-lg px-8 py-4 flex items-center gap-2"
           >
             <span aria-hidden="true">🌱</span> Start My Journey
           </button>
           <button
+            type="button"
             onClick={() => setCurrentPage('dashboard')}
             className="btn-ghost text-lg px-8 py-4"
           >
@@ -179,7 +187,7 @@ export default function Home({ setCurrentPage }) {
       </section>
 
       {/* Feature cards */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 pb-24" aria-label="Features">
+      <section className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-label="Features">
         <motion.h2
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -206,11 +214,37 @@ export default function Home({ setCurrentPage }) {
               <h3 className="font-display font-bold text-xl text-forest-800 dark:text-cream-100 mb-2">
                 {f.title}
               </h3>
-              <p className="text-sm text-forest-700/70 dark:text-cream-200/60 leading-relaxed">
+              <p className="text-sm text-forest-700 dark:text-cream-200 leading-relaxed">
                 {f.desc}
               </p>
             </motion.div>
           ))}
+        </div>
+      </section>
+
+      {/* About the Science */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-label="Methodology">
+        <div className="glass-card p-6">
+          <h2 className="font-display text-xl font-bold text-forest-900 dark:text-cream-100 mb-2">
+            <span aria-hidden="true">🔬</span> Backed by Science
+          </h2>
+          <p className="text-sm text-forest-700 dark:text-cream-200 mb-4">
+            Our emission factors come directly from three globally recognised authoritative sources:
+          </p>
+          <div className="grid sm:grid-cols-3 gap-4 mb-4">
+            {SCIENCE_SOURCES.map(src => (
+              <div key={src.name} className="flex items-start gap-3 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+                <span className="text-2xl" aria-hidden="true">{src.icon}</span>
+                <div>
+                  <div className="font-semibold text-sm text-forest-800 dark:text-cream-100">{src.name}</div>
+                  <div className="text-xs text-forest-700 dark:text-cream-200">{src.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-forest-700 dark:text-cream-200">
+            Benchmarked against: <strong>India avg 1,900 kg/yr</strong> · <strong>Global avg 4,700 kg/yr</strong> · <strong>Paris 1.5°C target 2,300 kg/yr</strong>
+          </p>
         </div>
       </section>
 
@@ -221,7 +255,7 @@ export default function Home({ setCurrentPage }) {
             { label: 'India avg footprint', value: '1,900 kg', sub: 'CO₂/year' },
             { label: 'Global average',       value: '4,700 kg', sub: 'CO₂/year' },
             { label: 'Paris 1.5°C target',   value: '2,300 kg', sub: 'CO₂/year' },
-            { label: 'Trees to offset 1 ton',value: '47 trees', sub: 'per year' },
+            { label: 'Trees to offset 1 ton', value: '47 trees', sub: 'per year' },
           ].map((s, i) => (
             <motion.div
               key={i}
@@ -231,8 +265,8 @@ export default function Home({ setCurrentPage }) {
               transition={{ delay: i * 0.1 }}
             >
               <div className="font-display text-2xl font-bold text-gold-400">{s.value}</div>
-              <div className="text-xs text-cream-200/70 mt-1">{s.label}</div>
-              <div className="text-xs text-cream-200/50">{s.sub}</div>
+              <div className="text-xs text-cream-200 mt-1">{s.label}</div>
+              <div className="text-xs text-cream-200">{s.sub}</div>
             </motion.div>
           ))}
         </div>
@@ -240,3 +274,7 @@ export default function Home({ setCurrentPage }) {
     </div>
   );
 }
+
+Home.propTypes = {
+  setCurrentPage: PropTypes.func.isRequired,
+};

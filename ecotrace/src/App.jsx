@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import PropTypes from 'prop-types';
 
 import Navbar from './components/Navbar.jsx';
 import SetupModal from './components/SetupModal.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 import Home from './pages/Home.jsx';
 import Quiz from './pages/Quiz.jsx';
@@ -24,10 +26,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ecotrace_dark') === 'true');
   const [showSetup, setShowSetup] = useState(false);
-  // Only require Gemini key on first launch — Maps and Firebase are optional features
   const [firstLaunch, setFirstLaunch] = useState(() => !getGeminiKey());
 
-  // Global state shared across pages
   const [footprintData, setFootprintData] = useState(() => {
     try {
       const saved = localStorage.getItem('ecotrace_footprint');
@@ -64,33 +64,62 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home setCurrentPage={setCurrentPage} />;
+        return (
+          <ErrorBoundary>
+            <Home setCurrentPage={setCurrentPage} />
+          </ErrorBoundary>
+        );
       case 'quiz':
-        return <Quiz setCurrentPage={setCurrentPage} setFootprintData={setFootprintData} />;
+        return (
+          <ErrorBoundary>
+            <Quiz setCurrentPage={setCurrentPage} setFootprintData={setFootprintData} />
+          </ErrorBoundary>
+        );
       case 'dashboard':
-        return <Dashboard footprintData={footprintData} logs={logs} setCurrentPage={setCurrentPage} />;
+        return (
+          <ErrorBoundary>
+            <Dashboard footprintData={footprintData} logs={logs} setCurrentPage={setCurrentPage} />
+          </ErrorBoundary>
+        );
       case 'tracker':
-        return <Tracker onLogsUpdate={setLogs} />;
+        return (
+          <ErrorBoundary>
+            <Tracker onLogsUpdate={setLogs} />
+          </ErrorBoundary>
+        );
       case 'insights':
-        return <Insights footprintData={footprintData} logs={logs} />;
+        return (
+          <ErrorBoundary>
+            <Insights footprintData={footprintData} logs={logs} />
+          </ErrorBoundary>
+        );
       case 'map':
-        return <Map />;
+        return (
+          <ErrorBoundary>
+            <Map />
+          </ErrorBoundary>
+        );
       default:
-        return <Home setCurrentPage={setCurrentPage} />;
+        return (
+          <ErrorBoundary>
+            <Home setCurrentPage={setCurrentPage} />
+          </ErrorBoundary>
+        );
     }
   };
 
   return (
     <div className="min-h-screen bg-cream-100 dark:bg-forest-900 font-body transition-colors duration-300">
-      <Navbar
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setShowSetup={setShowSetup}
-      />
+      <header>
+        <Navbar
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setShowSetup={setShowSetup}
+        />
+      </header>
 
-      {/* Page transitions */}
       <main id="main-content">
         <AnimatePresence mode="wait">
           <motion.div
@@ -105,7 +134,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* First-launch or settings modal */}
       {(firstLaunch || showSetup) && (
         <SetupModal
           onComplete={handleSetupComplete}
@@ -116,3 +144,6 @@ export default function App() {
     </div>
   );
 }
+
+// Suppress prop-types warning for the root component — it receives no props
+App.propTypes = {};

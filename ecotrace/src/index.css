@@ -75,9 +75,9 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F5F0E8; }
-::-webkit-scrollbar-thumb { background: #2d5016; border-radius: 3px; }
-.dark ::-webkit-scrollbar-track { background: #1a2e1a; }
+::-webkit-scrollbar-track { background: #faf8f3; }
+::-webkit-scrollbar-thumb { background: #0f3d26; border-radius: 3px; }
+.dark ::-webkit-scrollbar-track { background: #072718; }
 .dark ::-webkit-scrollbar-thumb { background: #5d9f31; }
 
 /* Leaf particle canvas */
@@ -97,14 +97,32 @@
   transition: transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Accessible focus rings */
+/* Accessible focus rings — WCAG 2.1 AA compliant */
 *:focus-visible {
-  outline: 2px solid #2d6a4f;
-  outline-offset: 2px;
+  outline: 2px solid #1a5c3a;
+  outline-offset: 3px;
   border-radius: 4px;
 }
+
 *:focus:not(:focus-visible) {
   outline: none;
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  *:focus-visible {
+    outline: 3px solid ButtonText;
+  }
+}
+
+/* Reduced motion — respect user system preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Skip link */
@@ -113,8 +131,8 @@
   left: -9999px;
   top: 0;
   z-index: 9999;
-  background: #2d5016;
-  color: #F5F0E8;
+  background: #1a5c3a;
+  color: #faf8f3;
   padding: 8px 16px;
   border-radius: 0 0 8px 0;
   font-weight: 600;

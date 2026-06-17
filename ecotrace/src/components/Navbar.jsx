@@ -1,26 +1,31 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { id: 'home',      label: 'Home',     emoji: '🏠' },
-  { id: 'quiz',      label: 'Quiz',     emoji: '📋' },
-  { id: 'dashboard', label: 'Dashboard',emoji: '📊' },
-  { id: 'tracker',   label: 'Tracker',  emoji: '📅' },
-  { id: 'insights',  label: 'Insights', emoji: '🤖' },
-  { id: 'map',       label: 'Map',      emoji: '🗺️' },
+  { id: 'home',      label: 'Home',      emoji: '🏠' },
+  { id: 'quiz',      label: 'Quiz',      emoji: '📋' },
+  { id: 'dashboard', label: 'Dashboard', emoji: '📊' },
+  { id: 'tracker',   label: 'Tracker',   emoji: '📅' },
+  { id: 'insights',  label: 'Insights',  emoji: '🤖' },
+  { id: 'map',       label: 'Map',       emoji: '🗺️' },
 ];
 
 export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkMode, setShowSetup }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-white/70 dark:bg-forest-900/80 border-b border-white/30 dark:border-forest-700/40 shadow-sm">
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-white/70 dark:bg-forest-900/80 border-b border-white/30 dark:border-forest-700/40 shadow-sm"
+      aria-label="Main navigation"
+    >
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
         {/* Logo */}
         <button
+          type="button"
           onClick={() => setCurrentPage('home')}
           className="flex items-center gap-2 group"
-          aria-label="Go to home page"
+          aria-label="EcoTrace — go to home page"
         >
           <span className="text-2xl group-hover:rotate-12 transition-transform duration-200" aria-hidden="true">🌿</span>
           <span className="font-display font-bold text-xl text-forest-800 dark:text-cream-100">
@@ -29,10 +34,12 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
         </button>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1" role="list">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
+              type="button"
+              role="listitem"
               onClick={() => setCurrentPage(item.id)}
               aria-current={currentPage === item.id ? 'page' : undefined}
               className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
@@ -57,30 +64,31 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
 
         {/* Right controls */}
         <div className="flex items-center gap-2">
-          {/* Dark mode toggle */}
           <button
+            type="button"
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
-            aria-label="Toggle dark mode"
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             <span className="text-lg" aria-hidden="true">{darkMode ? '☀️' : '🌙'}</span>
           </button>
 
-          {/* Settings */}
           <button
+            type="button"
             onClick={() => setShowSetup(true)}
             className="p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
-            aria-label="Open settings"
+            aria-label="Open API settings"
           >
             <span className="text-lg" aria-hidden="true">⚙️</span>
           </button>
 
-          {/* Mobile hamburger */}
           <button
+            type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-forest-800/10 dark:hover:bg-cream-100/10 transition-colors"
-            aria-label="Open navigation menu"
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
           >
             <span className="text-lg" aria-hidden="true">{mobileOpen ? '✕' : '☰'}</span>
           </button>
@@ -91,15 +99,18 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
+            id="mobile-nav"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden border-t border-white/30 dark:border-forest-700/40 bg-white/80 dark:bg-forest-900/90 backdrop-blur-md"
           >
-            <div className="px-4 py-3 flex flex-col gap-1">
+            <div className="px-4 py-3 flex flex-col gap-1" role="list">
               {NAV_ITEMS.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
+                  role="listitem"
                   onClick={() => { setCurrentPage(item.id); setMobileOpen(false); }}
                   aria-current={currentPage === item.id ? 'page' : undefined}
                   className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all
@@ -118,3 +129,11 @@ export default function Navbar({ currentPage, setCurrentPage, darkMode, setDarkM
     </nav>
   );
 }
+
+Navbar.propTypes = {
+  currentPage: PropTypes.string.isRequired,
+  setCurrentPage: PropTypes.func.isRequired,
+  darkMode: PropTypes.bool.isRequired,
+  setDarkMode: PropTypes.func.isRequired,
+  setShowSetup: PropTypes.func.isRequired,
+};

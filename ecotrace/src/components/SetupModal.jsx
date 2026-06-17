@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   saveGeminiKey, saveFirebaseConfig, saveMapsKey,
@@ -26,7 +27,6 @@ function parseFirebaseConfig(raw) {
   } catch (_) {}
 
   // 2. Extract just the { ... } object literal from whatever wrapper exists
-  // Find the first { and its matching closing }
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) {
@@ -46,11 +46,11 @@ function parseFirebaseConfig(raw) {
 }
 
 export default function SetupModal({ onComplete, onClose, isSettings = false }) {
-  const [geminiKey, setGeminiKey] = useState(getGeminiKey());
+  const [geminiKey, setGeminiKey] = useState(getGeminiKey() || '');
   const [firebaseJson, setFirebaseJson] = useState(
     getFirebaseConfig() ? JSON.stringify(getFirebaseConfig(), null, 2) : ''
   );
-  const [mapsKey, setMapsKey] = useState(getMapsKey());
+  const [mapsKey, setMapsKey] = useState(getMapsKey() || '');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
@@ -65,7 +65,6 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
         if (!parsedFirebase || typeof parsedFirebase !== 'object') {
           throw new Error('Result is not an object');
         }
-        // Sanity check — must have at least apiKey or projectId
         if (!parsedFirebase.apiKey && !parsedFirebase.projectId) {
           throw new Error('Missing required fields (apiKey / projectId)');
         }
@@ -99,6 +98,9 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="setup-modal-title"
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -110,8 +112,8 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
           {/* Header */}
           <div className="bg-gradient-to-r from-forest-900 to-forest-800 p-6 text-cream-100">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-3xl">🌿</span>
-              <h2 className="font-display text-2xl font-bold">
+              <span className="text-3xl" aria-hidden="true">🌿</span>
+              <h2 id="setup-modal-title" className="font-display text-2xl font-bold">
                 {isSettings ? 'API Settings' : 'Welcome to EcoTrace'}
               </h2>
             </div>
@@ -126,22 +128,32 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
           <div className="p-6 space-y-5">
             {/* Gemini Key */}
             <div>
-              <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5">
-                🤖 Gemini API Key <span className="text-red-500">*</span>
+              <label
+                htmlFor="setup-gemini-key"
+                className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5"
+              >
+                <span aria-hidden="true">🤖</span> Gemini API Key{' '}
+                <span className="text-red-500" aria-label="required">*</span>
               </label>
               <input
+                id="setup-gemini-key"
                 type="password"
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
                 placeholder="AIzaSy..."
+                autoComplete="off"
                 className="w-full px-4 py-3 rounded-xl border border-forest-800/20 dark:border-forest-600/40
                            bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100
                            focus:outline-none focus:ring-2 focus:ring-forest-700 text-sm font-mono"
               />
               <p className="mt-1 text-xs text-forest-700/60 dark:text-cream-200/50">
                 Get yours at{' '}
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
-                   className="text-forest-700 dark:text-gold-500 underline">
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-forest-700 dark:text-gold-500 underline"
+                >
                   aistudio.google.com
                 </a>
               </p>
@@ -149,22 +161,32 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
 
             {/* Firebase Config */}
             <div>
-              <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5">
-                🔥 Firebase Config <span className="text-forest-700/50">(optional)</span>
+              <label
+                htmlFor="setup-firebase-config"
+                className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5"
+              >
+                <span aria-hidden="true">🔥</span> Firebase Config{' '}
+                <span className="text-forest-700/50">(optional)</span>
               </label>
               <textarea
+                id="setup-firebase-config"
                 value={firebaseJson}
                 onChange={(e) => setFirebaseJson(e.target.value)}
                 placeholder={`// Paste exactly from Firebase Console → Project Settings\nconst firebaseConfig = {\n  apiKey: "AIzaSy...",\n  authDomain: "your-app.firebaseapp.com",\n  projectId: "your-app",\n  storageBucket: "your-app.appspot.com",\n  messagingSenderId: "123456",\n  appId: "1:123:web:abc"\n};`}
                 rows={6}
+                aria-describedby="setup-firebase-hint"
                 className="w-full px-4 py-3 rounded-xl border border-forest-800/20 dark:border-forest-600/40
                            bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100
                            focus:outline-none focus:ring-2 focus:ring-forest-700 text-xs font-mono resize-none"
               />
-              <p className="mt-1 text-xs text-forest-700/60 dark:text-cream-200/50">
+              <p id="setup-firebase-hint" className="mt-1 text-xs text-forest-700/60 dark:text-cream-200/50">
                 Paste the JS object or JSON from{' '}
-                <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer"
-                   className="text-forest-700 dark:text-gold-500 underline">
+                <a
+                  href="https://console.firebase.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-forest-700 dark:text-gold-500 underline"
+                >
                   Firebase Console
                 </a>
                 {' '}→ Project Settings → Your apps
@@ -173,14 +195,20 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
 
             {/* Maps Key */}
             <div>
-              <label className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5">
-                🗺️ Google Maps API Key <span className="text-forest-700/50">(optional)</span>
+              <label
+                htmlFor="setup-maps-key"
+                className="block text-sm font-semibold text-forest-800 dark:text-cream-100 mb-1.5"
+              >
+                <span aria-hidden="true">🗺️</span> Google Maps API Key{' '}
+                <span className="text-forest-700/50">(optional)</span>
               </label>
               <input
+                id="setup-maps-key"
                 type="password"
                 value={mapsKey}
                 onChange={(e) => setMapsKey(e.target.value)}
                 placeholder="AIzaSy..."
+                autoComplete="off"
                 className="w-full px-4 py-3 rounded-xl border border-forest-800/20 dark:border-forest-600/40
                            bg-white dark:bg-forest-800/50 text-forest-900 dark:text-cream-100
                            focus:outline-none focus:ring-2 focus:ring-forest-700 text-sm font-mono"
@@ -188,8 +216,11 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700/50 text-red-700 dark:text-red-300 text-sm">
-                ⚠️ {error}
+              <div
+                className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700/50 text-red-700 dark:text-red-300 text-sm"
+                role="alert"
+              >
+                <span aria-hidden="true">⚠️</span> {error}
               </div>
             )}
           </div>
@@ -197,16 +228,17 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
           {/* Footer */}
           <div className="px-6 pb-6 flex gap-3">
             {isSettings && (
-              <button onClick={onClose} className="btn-ghost flex-1">
+              <button type="button" onClick={onClose} className="btn-ghost flex-1">
                 Cancel
               </button>
             )}
             <button
+              type="button"
               onClick={handleSave}
               className={`flex-1 btn-primary flex items-center justify-center gap-2 ${saved ? 'bg-green-600' : ''}`}
             >
               {saved ? (
-                <>✅ Saved!</>
+                <><span aria-hidden="true">✅</span> Saved!</>
               ) : (
                 <>{isSettings ? 'Save Changes' : 'Launch EcoTrace 🌿'}</>
               )}
@@ -217,3 +249,9 @@ export default function SetupModal({ onComplete, onClose, isSettings = false }) 
     </AnimatePresence>
   );
 }
+
+SetupModal.propTypes = {
+  onComplete: PropTypes.func,
+  onClose: PropTypes.func,
+  isSettings: PropTypes.bool,
+};

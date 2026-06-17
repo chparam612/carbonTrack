@@ -9,9 +9,9 @@ export default {
     extend: {
       colors: {
         forest: {
-          900: '#1a2e1a',
-          800: '#2d5016',
-          700: '#1a5c3a',
+          900: '#072718',   // AAA contrast on light bg
+          800: '#0f3d26',   // AAA contrast on white
+          700: '#1a5c3a',   // AA contrast on white
           600: '#4d8528',
           500: '#5d9f31',
         },
@@ -21,13 +21,13 @@ export default {
           400: '#CD853F',
         },
         cream: {
-          100: '#F5F0E8',
+          100: '#faf8f3',
           200: '#f5f0e8',
           300: '#DDD5C4',
         },
         gold: {
           500: '#DAA520',
-          400: '#E8B830',
+          400: '#c8960a',   // darkened — AA contrast on dark backgrounds
           300: '#F0CC50',
         },
       },

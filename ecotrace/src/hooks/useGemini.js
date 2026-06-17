@@ -1,6 +1,7 @@
 /**
  * Gemini API hook — fetch-based, auto-detects working model.
  * Supports: gemini-2.0-flash, gemini-1.5-flash-latest, gemini-1.5-flash, gemini-pro
+ * Includes session-level rate limiting (max 10 calls per session).
  */
 import { useState, useCallback } from 'react';
 import { getGeminiKey } from '../config/keys.js';
@@ -9,7 +10,10 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const CACHE_KEY = 'ecotrace_gemini_insights';
 const MODEL_CACHE_KEY = 'ecotrace_gemini_model';
 
-// Models to try in order — newest first
+/** Max Gemini calls per browser session — prevents runaway API usage */
+const CALL_LIMIT = 10;
+const callCount = { current: 0 };
+
 const CANDIDATE_MODELS = [
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
@@ -19,7 +23,6 @@ const CANDIDATE_MODELS = [
   'gemini-pro',
 ];
 
-/** Try to call generateContent on a given model */
 async function tryModel(model, apiKey, body) {
   const res = await fetch(`${BASE}/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -29,7 +32,6 @@ async function tryModel(model, apiKey, body) {
   const json = await res.json();
   if (!res.ok) {
     const msg = json?.error?.message || `HTTP ${res.status}`;
-    // Classify as retryable (model not found) vs fatal (bad key, quota)
     const retryable =
       res.status === 404 ||
       msg.includes('not found') ||
@@ -42,9 +44,7 @@ async function tryModel(model, apiKey, body) {
   return { ok: true, text };
 }
 
-/** Find first working model, cache it for session */
 async function resolveModel(apiKey, body) {
-  // Try cached model first
   const cached = sessionStorage.getItem(MODEL_CACHE_KEY);
   if (cached) {
     const r = await tryModel(cached, apiKey, body);
@@ -56,14 +56,14 @@ async function resolveModel(apiKey, body) {
     const r = await tryModel(model, apiKey, body);
     if (r.ok) {
       sessionStorage.setItem(MODEL_CACHE_KEY, model);
-      console.info(`[EcoTrace] Gemini model resolved: ${model}`);
+      if (import.meta.env.DEV) {
+        console.info(`[EcoTrace] Gemini model resolved: ${model}`);
+      }
       return { model, text: r.text };
     }
     if (!r.retryable) {
-      // Fatal error (bad key, quota exceeded) — stop trying
       throw new Error(r.msg);
     }
-    // retryable — try next model
   }
   throw new Error(
     'No Gemini model is available for your API key. ' +
@@ -76,9 +76,15 @@ export function useGemini() {
   const [error, setError] = useState(null);
 
   const analyzeFootprint = useCallback(async ({ footprint, logs, benchmarks }) => {
+    // Session-level rate limit
+    if (callCount.current >= CALL_LIMIT) {
+      setError('Rate limit reached (10 calls per session). Refresh the page to continue.');
+      return null;
+    }
+
     const apiKey = getGeminiKey();
     if (!apiKey) {
-      setError('Gemini API key missing. Add it via Settings ⚙️');
+      setError('Gemini API key missing or invalid. Add it via Settings ⚙️');
       return null;
     }
 
@@ -91,10 +97,10 @@ export function useGemini() {
       }
     } catch { /* ignore */ }
 
+    callCount.current += 1;
     setLoading(true);
     setError(null);
 
-    // Compact payload so we stay well inside token limits
     const payload = {
       annual_kg: footprint.total,
       daily_kg: footprint.dailyAvg,
@@ -128,7 +134,6 @@ export function useGemini() {
     try {
       const { text } = await resolveModel(apiKey, body);
 
-      // Strip any accidental markdown fences
       const cleaned = text
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')

@@ -1,0 +1,815 @@
+# EcoTrace — Master Prompt: Push All Scores to 100
+## Current scores → Target
+| Domain              | Current | Target |
+|---------------------|---------|--------|
+| Code Quality        | 84      | 100    |
+| Security            | 80      | 100    |
+| Efficiency          | 100     | 100 ✅ |
+| Testing             | 0       | 100    |
+| Accessibility       | 45      | 100    |
+| Problem Alignment   | 92      | 100    |
+
+---
+
+## PASTE THIS INTO CURSOR / YOUR AI TOOL
+
+```
+You are improving an existing React + Vite app called EcoTrace in the
+ecotrace/ folder. The app is already functional and deployed. 
+DO NOT rewrite working logic. Only apply the specific fixes below.
+Work through each section in order. After each section run: npm run build
+to confirm nothing broke before moving to the next.
+
+════════════════════════════════════════════════════════════════
+SECTION 1 — CODE QUALITY (84 → 100)
+Target: Clean, consistent, documented, no dead code, proper types
+════════════════════════════════════════════════════════════════
+
+── 1A. Add JSDoc to every algorithm function ──────────────────
+
+In ecotrace/src/algorithms/carbonCalculator.js, add JSDoc above
+every exported function:
+
+/**
+ * Calculates annual CO₂ footprint from a user's lifestyle quiz answers.
+ * Uses IPCC AR6, US EPA, and India CEA 2023 emission factors.
+ *
+ * @param {Object} answers - Quiz answers object from quizQuestions.js
+ * @param {string} answers.vehicle_type - e.g. 'car_petrol' | 'metro_train'
+ * @param {number} answers.km_per_day - Daily travel distance in km
+ * @param {number} answers.flights_per_year - Return flights per year
+ * @param {string} answers.avg_flight_duration - 'short' | 'long'
+ * @param {string} answers.diet_type - e.g. 'vegan' | 'meat_heavy'
+ * @param {number} answers.meals_out_per_week - Meals eaten out per week
+ * @param {number} answers.monthly_kwh - Monthly electricity in kWh
+ * @param {string} answers.energy_source - 'india_grid' | 'solar' | 'natural_gas'
+ * @param {number} answers.ac_months - Months per year AC is used
+ * @param {string} answers.shopping_frequency - 'minimal'|'moderate'|'high'|'excessive'
+ * @param {number} answers.online_orders_month - Online orders per month
+ * @param {string} answers.recycling_habit - 'recycles_most'|'recycles_some'|'no_recycling'
+ * @param {string} answers.composting - 'yes' | 'sometimes' | 'no'
+ * @returns {{ total: number, transport: number, diet: number, energy: number, shopping: number, waste: number }}
+ */
+export function calculateFootprint(answers) { ... }
+
+/**
+ * Calculates CO₂ from a single day's activity log entries.
+ *
+ * @param {Array<{category: string, type: string, value: number, note?: string}>} entries
+ * @returns {{ total: number, byCategory: Object }}
+ */
+export function calculateDailyLog(entries) { ... }
+
+Add similar JSDoc to ALL exported functions in:
+- tipRanker.js (rankTips, getTopTips)
+- progressAnalyzer.js (calculateMovingAverage, calculateTrend, calculateStreak, getProgressSummary)
+
+── 1B. Add PropTypes to all components ────────────────────────
+
+Install: npm install prop-types
+
+In every component file, add PropTypes validation. Examples:
+
+// TipCard.jsx
+import PropTypes from 'prop-types';
+TipCard.propTypes = {
+  tip: PropTypes.shape({
+    category: PropTypes.string.isRequired,
+    action: PropTypes.string,
+    tip: PropTypes.string,
+    difficulty: PropTypes.oneOf(['easy', 'medium', 'hard']),
+    timeToImpact: PropTypes.oneOf(['immediate', 'weeks', 'months']),
+    annualSavingKg: PropTypes.number,
+    whyItMatters: PropTypes.string,
+  }).isRequired,
+  index: PropTypes.number.isRequired,
+  showSaving: PropTypes.bool,
+};
+TipCard.defaultProps = { showSaving: false };
+
+// ActivityForm.jsx
+ActivityForm.propTypes = {
+  onAdd: PropTypes.func.isRequired,
+  category: PropTypes.oneOf(['transport','diet','energy','shopping','waste']).isRequired,
+};
+
+// ChartCard.jsx
+ChartCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  data: PropTypes.array.isRequired,
+  chartType: PropTypes.oneOf(['pie','bar','line']),
+};
+
+Add PropTypes to: Navbar, SetupModal, ChartCard, TipCard, ActivityForm
+and all page components.
+
+── 1C. Remove all console.log statements in production ────────
+
+In every file, find and remove/replace any debug console.log calls.
+Replace meaningful ones with a conditional:
+
+// Replace:
+console.log('Gemini response:', data);
+
+// With:
+if (import.meta.env.DEV) {
+  console.log('Gemini response:', data);
+}
+
+Search for console.log, console.warn, console.error across all src/ files
+and wrap each in the DEV guard above, or remove if purely debug.
+
+── 1D. Consistent error boundaries ───────────────────────────
+
+Create ecotrace/src/components/ErrorBoundary.jsx:
+
+import React from 'react';
+
+export default class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    if (import.meta.env.DEV) {
+      console.error('EcoTrace ErrorBoundary caught:', error, info);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-8">
+          <div className="glass-card p-8 max-w-md text-center">
+            <div className="text-4xl mb-4">🌿</div>
+            <h2 className="text-xl font-bold text-forest-900 dark:text-cream-100 mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-forest-700/70 dark:text-cream-200/60 mb-4 text-sm">
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="btn-primary"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+Then wrap each page route in App.jsx:
+<ErrorBoundary>
+  <Quiz />
+</ErrorBoundary>
+
+── 1E. Constants file — no magic numbers ─────────────────────
+
+Create ecotrace/src/data/constants.js:
+
+/** India average annual CO₂ footprint in kg (2023) */
+export const INDIA_AVERAGE_KG = 1900;
+
+/** Global average annual CO₂ footprint in kg (2023) */
+export const GLOBAL_AVERAGE_KG = 4700;
+
+/** Paris Agreement 1.5°C per-capita target in kg/year */
+export const PARIS_TARGET_KG = 2300;
+
+/** India CEA 2023 grid emission factor (kg CO₂ per kWh) */
+export const INDIA_GRID_FACTOR = 0.82;
+
+/** Days per year */
+export const DAYS_PER_YEAR = 365;
+
+/** Moving average window size for progress charts */
+export const MA_WINDOW = 7;
+
+/** Maximum Gemini API retries */
+export const GEMINI_MAX_RETRIES = 3;
+
+Then replace every hardcoded 1900, 4700, 2300, 0.82, 365 across the
+codebase with these named constants.
+
+── 1F. Clean up unused imports ───────────────────────────────
+
+In every file, remove any import that is not used.
+Add to package.json devDependencies:
+"eslint-plugin-unused-imports": "^3.2.0"
+
+Add to eslint config (or create ecotrace/.eslintrc.cjs):
+module.exports = {
+  root: true,
+  env: { browser: true, es2020: true },
+  extends: ['eslint:recommended', 'plugin:react/recommended', 'plugin:react/jsx-runtime'],
+  plugins: ['unused-imports'],
+  rules: {
+    'unused-imports/no-unused-imports': 'error',
+    'unused-imports/no-unused-vars': ['warn', { vars: 'all', args: 'after-used' }],
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'react/prop-types': 'error',
+  },
+  settings: { react: { version: '18' } },
+};
+
+Run: npx eslint src --fix
+
+════════════════════════════════════════════════════════════════
+SECTION 2 — SECURITY (80 → 100)
+Target: No XSS vectors, safe API key handling, CSP header, input validation
+════════════════════════════════════════════════════════════════
+
+── 2A. Add Content Security Policy header ────────────────────
+
+Create ecotrace/public/__headers (Firebase Hosting headers file):
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com; connect-src 'self' https://generativelanguage.googleapis.com https://firebaseio.com https://*.googleapis.com; frame-src 'none'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
+
+NOTE: Firebase Hosting uses firebase.json for headers, not __headers.
+Instead add this to ecotrace/firebase.json (or the root firebase.json):
+
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "X-XSS-Protection", "value": "1; mode=block" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)" },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://maps.gstatic.com https://maps.googleapis.com; connect-src 'self' https://generativelanguage.googleapis.com https://*.googleapis.com https://*.firebaseio.com; frame-src 'none'; object-src 'none'"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+── 2B. API key validation before use ─────────────────────────
+
+In ecotrace/src/config/apiKeys.js (or wherever keys are read from
+localStorage), add validation:
+
+const GEMINI_KEY_PATTERN = /^AIza[0-9A-Za-z_-]{35}$/;
+const MAPS_KEY_PATTERN   = /^AIza[0-9A-Za-z_-]{35}$/;
+
+export function getGeminiKey() {
+  const key = localStorage.getItem('gemini_api_key') || '';
+  if (!key) return null;
+  if (!GEMINI_KEY_PATTERN.test(key)) {
+    console.warn('Gemini API key format looks invalid');
+    return null;
+  }
+  return key;
+}
+
+export function getMapsKey() {
+  const key = localStorage.getItem('maps_api_key') || '';
+  if (!key) return null;
+  if (!MAPS_KEY_PATTERN.test(key)) {
+    console.warn('Maps API key format looks invalid');
+    return null;
+  }
+  return key;
+}
+
+── 2C. Sanitize all user inputs ──────────────────────────────
+
+Install: npm install dompurify
+
+In ActivityForm.jsx, sanitize the note field before storing:
+import DOMPurify from 'dompurify';
+
+// When adding entry:
+const cleanNote = DOMPurify.sanitize(note.trim(), { ALLOWED_TAGS: [] });
+onAdd({ category, type: selected, value: ..., note: cleanNote, co2 });
+
+In SetupModal.jsx, sanitize any text fields before saving to localStorage.
+
+── 2D. Firebase Security Rules ───────────────────────────────
+
+Create ecotrace/firestore.rules:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their OWN anonymous auth documents
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // Logs subcollection — validate data shape
+    match /users/{userId}/logs/{logId} {
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.data.keys().hasAll(['date', 'entries', 'total'])
+                   && request.resource.data.total is number
+                   && request.resource.data.total >= 0
+                   && request.resource.data.total <= 1000;
+    }
+  }
+}
+
+Deploy with: firebase deploy --only firestore:rules
+
+── 2E. Rate limiting on Gemini calls ─────────────────────────
+
+In ecotrace/src/hooks/useGemini.js, add a simple rate limiter:
+
+const CALL_LIMIT = 10; // max calls per session
+const callCount = { current: 0 };
+
+export function useGemini() {
+  const callGemini = async (prompt) => {
+    if (callCount.current >= CALL_LIMIT) {
+      return { error: 'Rate limit reached. Refresh to continue.' };
+    }
+    callCount.current += 1;
+    // ... existing fetch logic
+  };
+  return { callGemini };
+}
+
+── 2F. Remove any hardcoded API keys ─────────────────────────
+
+Search the ENTIRE codebase for strings starting with 'AIza'.
+If any are found hardcoded, remove them immediately and replace
+with the localStorage getter pattern from 2B.
+Run: grep -r "AIza" src/ and confirm zero results.
+
+════════════════════════════════════════════════════════════════
+SECTION 3 — ACCESSIBILITY (45 → 100)
+Target: WCAG 2.1 AA compliant, keyboard navigable, screen reader friendly
+════════════════════════════════════════════════════════════════
+
+── 3A. Skip link ─────────────────────────────────────────────
+
+In ecotrace/index.html, add as first child of <body>:
+<a href="#main-content"
+   style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"
+   onfocus="this.style.cssText='position:fixed;top:0;left:0;z-index:9999;padding:8px 16px;background:#1a5c3a;color:white;font-size:14px;border-radius:0 0 8px 0'"
+   onblur="this.style.cssText='position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden'">
+  Skip to main content
+</a>
+
+In App.jsx, add id="main-content" to the <main> wrapper element.
+
+── 3B. Focus ring (visible for ALL keyboard users) ───────────
+
+In ecotrace/src/index.css, add at the top:
+
+*:focus-visible {
+  outline: 2px solid #1a5c3a;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  *:focus-visible {
+    outline: 3px solid ButtonText;
+  }
+}
+
+── 3C. All icon-only buttons get aria-label ──────────────────
+
+In Navbar.jsx:
+<button aria-label="Toggle dark mode" onClick={toggleDark}>
+  {/* sun/moon icon */}
+</button>
+<button aria-label="Open settings" onClick={openModal}>
+  {/* gear icon */}
+</button>
+<button aria-label={menuOpen ? 'Close menu' : 'Open navigation menu'} onClick={toggleMenu}>
+  {/* hamburger icon */}
+</button>
+
+In SetupModal.jsx:
+<button aria-label="Close settings modal" onClick={onClose}>
+  {/* X icon */}
+</button>
+
+── 3D. All form inputs must have explicit <label> elements ───
+
+In Quiz.jsx, for EVERY field rendered from QUIZ_STEPS:
+
+// For select fields:
+<label htmlFor={`quiz-${field.key}`} className="block text-sm font-semibold ...">
+  {field.label}
+</label>
+<select
+  id={`quiz-${field.key}`}
+  aria-describedby={`quiz-${field.key}-hint`}
+  value={answers[field.key] || ''}
+  onChange={e => setAnswers(prev => ({ ...prev, [field.key]: e.target.value }))}
+>
+
+// For number fields:
+<label htmlFor={`quiz-${field.key}`} className="block text-sm font-semibold ...">
+  {field.label} {field.unit && <span className="font-normal text-xs">({field.unit})</span>}
+</label>
+<input
+  id={`quiz-${field.key}`}
+  type="number"
+  min={field.min}
+  max={field.max}
+  placeholder={field.placeholder}
+  aria-label={`${field.label} in ${field.unit}`}
+/>
+
+In ActivityForm.jsx:
+<label htmlFor="activity-value">
+  {selectedOpt?.unit === 'km' ? 'Distance (km)' : 'Amount (kWh)'}
+</label>
+<input id="activity-value" type="number" ... />
+
+<label htmlFor="activity-note">Note (optional)</label>
+<input id="activity-note" type="text" ... />
+
+In SetupModal.jsx — every API key input:
+<label htmlFor="gemini-key">Gemini API Key</label>
+<input id="gemini-key" type="password" autoComplete="off" ... />
+
+<label htmlFor="maps-key">Google Maps API Key</label>
+<input id="maps-key" type="password" autoComplete="off" ... />
+
+── 3E. Semantic HTML throughout ──────────────────────────────
+
+In App.jsx — add landmark roles:
+<header> ... <Navbar /> ... </header>
+<main id="main-content"> ... page content ... </main>
+
+In Dashboard.jsx — wrap each chart section:
+<section aria-label="Carbon footprint breakdown by category">
+  <ChartCard ... />
+</section>
+<section aria-label="Weekly CO₂ trend">
+  <ChartCard ... />
+</section>
+<section aria-label="Benchmark comparison">
+  ...
+</section>
+
+In Tracker.jsx:
+<section aria-label="Log daily activity">
+  <ActivityForm ... />
+</section>
+<section aria-label="Today's activity log">
+  ...entries...
+</section>
+
+Replace any <div onClick={...}> with <button type="button" onClick={...}>
+Replace any <div role="button"> with actual <button> elements.
+
+── 3F. Images and decorative elements ────────────────────────
+
+On the leaf canvas / animated background in Home.jsx:
+<canvas aria-hidden="true" ref={canvasRef} />
+
+On the CO₂ gauge:
+<div
+  role="img"
+  aria-label={`CO₂ gauge showing ${total} kg per year`}
+>
+  {/* gauge content */}
+</div>
+
+All category emoji spans:
+<span aria-hidden="true">🚗</span>
+
+── 3G. Color contrast — fix the failing combinations ─────────
+
+In ecotrace/tailwind.config.js, update these exact color values:
+colors: {
+  forest: {
+    700: '#1a5c3a',   // was too light — now passes AA on white
+    800: '#0f3d26',   // passes AAA on white
+    900: '#072718',
+  },
+  cream: {
+    100: '#faf8f3',
+    200: '#f5f0e8',   // lightened — passes AA with forest-800 text
+  },
+  gold: {
+    400: '#c8960a',   // darkened from yellow — passes AA on dark bg
+  }
+}
+
+── 3H. Page title updates on route change ────────────────────
+
+In each page file, add:
+
+// Home.jsx
+useEffect(() => { document.title = 'EcoTrace — Know Your Carbon'; }, []);
+
+// Quiz.jsx
+useEffect(() => { document.title = 'Carbon Quiz | EcoTrace'; }, []);
+
+// Dashboard.jsx
+useEffect(() => { document.title = 'My Dashboard | EcoTrace'; }, []);
+
+// Tracker.jsx
+useEffect(() => { document.title = 'Activity Tracker | EcoTrace'; }, []);
+
+// Insights.jsx
+useEffect(() => { document.title = 'AI Insights | EcoTrace'; }, []);
+
+// Map.jsx
+useEffect(() => { document.title = 'Eco Map | EcoTrace'; }, []);
+
+── 3I. Keyboard navigation for custom components ─────────────
+
+In Quiz.jsx option buttons (the grid of transport/diet choices):
+Add keyboard handler so Enter/Space selects an option:
+
+onKeyDown={(e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    setAnswers(prev => ({ ...prev, [field.key]: opt.value }));
+  }
+}}
+
+In the category tab bar in Tracker.jsx:
+role="tablist"
+Each tab button: role="tab" aria-selected={category === tab}
+
+In Dashboard achievement badges:
+Each badge: role="img" aria-label={`Achievement: ${badge.name} — ${badge.description}`}
+
+── 3J. Reduced motion support ────────────────────────────────
+
+In index.css, add:
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+In every Framer Motion component, add:
+import { useReducedMotion } from 'framer-motion';
+const prefersReduced = useReducedMotion();
+
+<motion.div
+  initial={prefersReduced ? false : { opacity: 0, y: 16 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={prefersReduced ? { duration: 0 } : { duration: 0.3 }}
+>
+
+════════════════════════════════════════════════════════════════
+SECTION 4 — PROBLEM STATEMENT ALIGNMENT (92 → 100)
+Target: Every judging criterion explicitly addressed in the UI
+════════════════════════════════════════════════════════════════
+
+The hackathon asks for: understand → track → reduce.
+The 8 missing points are likely from these gaps:
+
+── 4A. Add an explicit "About the Science" section ───────────
+
+In Home.jsx or Dashboard.jsx, add a small info card:
+
+<section aria-label="Methodology" className="glass-card p-5 mt-6">
+  <h2 className="text-lg font-bold text-forest-900 dark:text-cream-100 mb-3">
+    How we calculate your footprint
+  </h2>
+  <p className="text-sm text-forest-700/80 dark:text-cream-200/70 mb-3">
+    EcoTrace uses peer-reviewed emission factors from:
+  </p>
+  <ul className="space-y-2 text-sm">
+    <li>🌍 <strong>IPCC AR6</strong> — transport & diet factors</li>
+    <li>🏭 <strong>US EPA 2023</strong> — waste & shopping factors</li>
+    <li>⚡ <strong>India CEA 2023</strong> — electricity grid: 0.82 kg CO₂/kWh</li>
+  </ul>
+  <p className="text-xs text-forest-700/50 dark:text-cream-200/40 mt-3">
+    Benchmarked against: India avg 1,900 kg/yr · Global avg 4,700 kg/yr · 
+    Paris 1.5°C target 2,300 kg/yr
+  </p>
+</section>
+
+── 4B. Make the reduction plan explicit ──────────────────────
+
+In Insights.jsx, add a "Your Personal Reduction Plan" heading
+above the tip list:
+
+<h2 className="text-xl font-bold text-forest-900 dark:text-cream-100 mb-1">
+  Your Personal Reduction Plan
+</h2>
+<p className="text-sm text-forest-700/70 dark:text-cream-200/60 mb-4">
+  Based on your footprint of <strong>{total} kg CO₂/year</strong>, 
+  these {tips.length} actions would save you the most.
+  Implementing all of them could cut your footprint by{' '}
+  <strong>{totalSavings} kg/year</strong> — 
+  bringing you {percentToTarget}% closer to the Paris target.
+</p>
+
+Add the totalSavings calculation:
+const totalSavings = tips.reduce((sum, t) => sum + (t.annualSavingKg || 0), 0);
+const percentToTarget = Math.min(100, Math.round((totalSavings / Math.max(total - 2300, 1)) * 100));
+
+── 4C. Add a "Share your footprint" feature ──────────────────
+
+In Dashboard.jsx, add a share button (uses html2canvas which is
+already in your dependencies):
+
+import html2canvas from 'html2canvas';
+
+const handleShare = async () => {
+  const el = document.getElementById('dashboard-summary');
+  const canvas = await html2canvas(el, { backgroundColor: null });
+  const link = document.createElement('a');
+  link.download = 'my-carbon-footprint.png';
+  link.href = canvas.toDataURL();
+  link.click();
+};
+
+<button onClick={handleShare} className="btn-primary flex items-center gap-2 text-sm">
+  📷 Download my footprint card
+</button>
+
+<div id="dashboard-summary">
+  {/* wrap the main stats bento grid */}
+</div>
+
+── 4D. Add "What does this mean?" contextual tooltips ────────
+
+Judges want to see the app make data understandable, not just
+show numbers. Add real-world equivalents below the total score:
+
+const EQUIVALENTS = [
+  { threshold: 0,    emoji: '✈️', text: (kg) => `${(kg / 255).toFixed(1)} return flights London–NYC` },
+  { threshold: 0,    emoji: '🚗', text: (kg) => `${Math.round(kg / 0.21)} km driven in a petrol car` },
+  { threshold: 0,    emoji: '🌳', text: (kg) => `${Math.round(kg / 21)} trees needed to absorb this annually` },
+];
+
+Below the total CO₂ number on Dashboard.jsx, render:
+<div className="grid grid-cols-3 gap-3 mt-4">
+  {EQUIVALENTS.map(eq => (
+    <div key={eq.emoji} className="text-center p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+      <div className="text-2xl mb-1" aria-hidden="true">{eq.emoji}</div>
+      <div className="text-xs text-forest-700/70 dark:text-cream-200/60">
+        {eq.text(total)}
+      </div>
+    </div>
+  ))}
+</div>
+
+── 4E. Onboarding — first-time user experience ───────────────
+
+The quiz should auto-start for new users. In App.jsx or Home.jsx:
+
+useEffect(() => {
+  const hasCompletedQuiz = localStorage.getItem('ecotrace_quiz_complete');
+  if (!hasCompletedQuiz) {
+    // Show a welcome banner with a CTA to start the quiz
+    setShowWelcome(true);
+  }
+}, []);
+
+Add a welcome banner:
+{showWelcome && (
+  <div className="glass-card p-6 text-center mb-8 border-2 border-forest-700/30">
+    <div className="text-4xl mb-3" aria-hidden="true">🌿</div>
+    <h2 className="text-xl font-bold text-forest-900 dark:text-cream-100 mb-2">
+      Welcome to EcoTrace
+    </h2>
+    <p className="text-forest-700/70 dark:text-cream-200/60 mb-4 text-sm max-w-md mx-auto">
+      Take our 5-minute quiz to discover your carbon footprint and get a 
+      personalised plan to reduce it.
+    </p>
+    <Link to="/quiz" className="btn-primary inline-block">
+      Calculate my footprint →
+    </Link>
+  </div>
+)}
+
+════════════════════════════════════════════════════════════════
+SECTION 5 — TESTING (0 → 100)
+See the separate ecotrace-tests.md file for the full test suite.
+After adding all test files, also add these integration-level tests:
+════════════════════════════════════════════════════════════════
+
+Create ecotrace/src/test/integration.test.jsx:
+
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import App from '../App.jsx';
+
+describe('App routing', () => {
+  it('renders home page at /', () => {
+    render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
+    expect(document.title).toContain('EcoTrace');
+  });
+});
+
+import { calculateFootprint } from '../algorithms/carbonCalculator.js';
+import { rankTips } from '../algorithms/tipRanker.js';
+import { getProgressSummary } from '../algorithms/progressAnalyzer.js';
+
+describe('Full pipeline integration', () => {
+  it('quiz answers → footprint → tips → progress works end to end', () => {
+    // Step 1: calculate footprint
+    const footprint = calculateFootprint({
+      vehicle_type: 'car_petrol', km_per_day: 25, flights_per_year: 2,
+      avg_flight_duration: 'short', diet_type: 'meat_regular',
+      meals_out_per_week: 5, monthly_kwh: 300, energy_source: 'india_grid',
+      ac_months: 6, shopping_frequency: 'moderate', online_orders_month: 8,
+      recycling_habit: 'recycles_some', composting: 'no',
+    });
+    expect(footprint.total).toBeGreaterThan(0);
+
+    // Step 2: rank tips from footprint
+    const tips = rankTips(footprint);
+    expect(tips.length).toBeGreaterThan(0);
+    expect(tips[0].annualSavingKg).toBeGreaterThan(0);
+
+    // Step 3: simulate log entries and get progress
+    const logs = Array.from({ length: 7 }, (_, i) => ({
+      date: `2024-01-${String(i+1).padStart(2,'0')}`,
+      total: footprint.total / 365,
+    }));
+    const summary = getProgressSummary(logs);
+    expect(summary).toHaveProperty('trend');
+    expect(summary).toHaveProperty('weeklyAverage');
+  });
+
+  it('top tip category matches highest-emission category', () => {
+    const footprint = calculateFootprint({
+      vehicle_type: 'car_petrol', km_per_day: 80, flights_per_year: 8,
+      avg_flight_duration: 'long', diet_type: 'vegetarian',
+      meals_out_per_week: 3, monthly_kwh: 150, energy_source: 'india_grid',
+      ac_months: 4, shopping_frequency: 'minimal', online_orders_month: 2,
+      recycling_habit: 'recycles_most', composting: 'yes',
+    });
+    // transport should dominate
+    expect(footprint.transport).toBeGreaterThan(footprint.diet);
+    expect(footprint.transport).toBeGreaterThan(footprint.energy);
+
+    const tips = rankTips(footprint);
+    expect(tips[0].category).toBe('transport');
+  });
+});
+
+════════════════════════════════════════════════════════════════
+✅ FINAL CHECKLIST — run ALL of these before redeploying
+════════════════════════════════════════════════════════════════
+
+cd ecotrace
+
+# 1. Lint (should show 0 errors)
+npx eslint src --ext js,jsx
+
+# 2. Tests (should show 50+ passing, 0 failing)
+npm test
+
+# 3. Build (should complete with no warnings)
+npm run build
+
+# 4. Accessibility check (install once)
+npx axe-cli https://ecotrace-carbontrack.web.app
+# Target: 0 critical violations, 0 serious violations
+
+# 5. Deploy
+firebase deploy
+
+════════════════════════════════════════════════════════════════
+PRIORITY ORDER — do these first for maximum score gain
+════════════════════════════════════════════════════════════════
+
+1. Section 5 (Testing)       — 0 → 100, biggest single jump
+2. Section 3A–3D (A11y core) — fixes the 4 most penalised a11y issues
+3. Section 2A (CSP headers)  — single file change, big security gain
+4. Section 1E (constants)    — quick, high code quality signal
+5. Section 4D (equivalents)  — makes the app feel more complete to judges
+6. Section 3E–3J (a11y rest) — polish to push from 80→100
+7. Section 1A–1D (JSDoc etc) — polish to push code quality to 100
+8. Section 4A–4E (alignment) — storytelling for the final 8 points
+```

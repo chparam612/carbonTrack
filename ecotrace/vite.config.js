@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 const ROOT_MODULES = resolve('../node_modules')
+const LOCAL_MODULES = resolve('./node_modules')
 
 export default defineConfig({
   plugins: [react()],
@@ -14,10 +15,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'react': `${ROOT_MODULES}/react`,
-      'react-dom': `${ROOT_MODULES}/react-dom`,
-      'react/jsx-runtime': `${ROOT_MODULES}/react/jsx-runtime`,
-      'react/jsx-dev-runtime': `${ROOT_MODULES}/react/jsx-dev-runtime`,
+      'react': `${LOCAL_MODULES}/react`,
+      'react-dom': `${LOCAL_MODULES}/react-dom`,
+      'react/jsx-runtime': `${LOCAL_MODULES}/react/jsx-runtime`,
+      'react/jsx-dev-runtime': `${LOCAL_MODULES}/react/jsx-dev-runtime`,
     },
     dedupe: ['react', 'react-dom'],
   },

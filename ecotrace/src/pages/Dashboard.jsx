@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import ChartCard from '../components/ChartCard.jsx';
 import TipCard from '../components/TipCard.jsx';
@@ -8,7 +9,14 @@ import { getTopTips } from '../algorithms/tipRanker.js';
 import { analyzeProgress } from '../algorithms/progressAnalyzer.js';
 import { getScoreColor, getScoreLabel } from '../utils/scoring.js';
 
-function BentoCard({ children, className = '', span = '' }) {
+/** Real-world equivalents that make CO₂ numbers tangible */
+const EQUIVALENTS = [
+  { emoji: '✈️', text: (kg) => `${(kg / 255).toFixed(1)} return flights London–NYC` },
+  { emoji: '🚗', text: (kg) => `${Math.round(kg / 0.21).toLocaleString()} km driven in a petrol car` },
+  { emoji: '🌳', text: (kg) => `${Math.round(kg / 21)} trees needed to absorb this per year` },
+];
+
+function BentoCard({ children, className, span }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -20,7 +28,14 @@ function BentoCard({ children, className = '', span = '' }) {
   );
 }
 
-function AnimatedNumber({ value, suffix = '' }) {
+BentoCard.propTypes = {
+  children: PropTypes.node.isRequired,
+  className: PropTypes.string,
+  span: PropTypes.string,
+};
+BentoCard.defaultProps = { className: '', span: '' };
+
+function AnimatedNumber({ value, suffix }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     if (value === 0) { setDisplay(0); return; }
@@ -41,7 +56,13 @@ function AnimatedNumber({ value, suffix = '' }) {
   return <>{display.toLocaleString()}{suffix}</>;
 }
 
-export default function Dashboard({ footprintData, logs = [], setCurrentPage }) {
+AnimatedNumber.propTypes = {
+  value: PropTypes.number.isRequired,
+  suffix: PropTypes.string,
+};
+AnimatedNumber.defaultProps = { suffix: '' };
+
+export default function Dashboard({ footprintData = null, logs = [], setCurrentPage = null }) {
   useEffect(() => { document.title = 'My Dashboard | EcoTrace'; }, []);
 
   const hasData = !!footprintData;
@@ -49,7 +70,6 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
   const breakdown = footprintData?.breakdown || {};
   const trees = footprintData?.trees || 0;
 
-  // getTopTips accepts the full footprintData object (flat keys + total)
   const tips = hasData ? getTopTips(footprintData, 3) : [];
   const analytics = analyzeProgress(logs);
 
@@ -60,7 +80,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
 
   const barData = [
     ['', 'kg CO₂/year', { role: 'style' }],
-    ['You',          total,            '#2d5016'],
+    ['You',          total,            '#0f3d26'],
     ['India avg',    BENCHMARKS.india,  '#8B4513'],
     ['Paris target', BENCHMARKS.target, '#DAA520'],
     ['Global avg',   BENCHMARKS.global, '#D2691E'],
@@ -97,6 +117,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
         description="Complete the 5-step quiz to calculate your annual CO₂ footprint and unlock your personalised dashboard. Takes about 2 minutes ⏱️"
       >
         <button
+          type="button"
           onClick={() => setCurrentPage?.('quiz')}
           className="btn-primary w-full text-base py-4"
         >
@@ -113,7 +134,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           <h1 className="font-display text-3xl font-bold text-forest-900 dark:text-cream-100">
             Your Dashboard <span aria-hidden="true">🌿</span>
           </h1>
-          <p className="text-forest-700/60 dark:text-cream-200/50 text-sm mt-1">
+          <p className="text-forest-700 dark:text-cream-200 text-sm mt-1">
             Annual carbon footprint overview
           </p>
         </motion.div>
@@ -121,19 +142,19 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-auto">
 
           {/* Total Score */}
-          <section aria-label="Carbon footprint summary">
-            <BentoCard className="lg:col-span-2 text-center" span="">
-              <p className="text-sm font-semibold text-forest-700/70 dark:text-cream-200/50 mb-1">Annual Footprint</p>
+          <section aria-label="Carbon footprint summary" className="lg:col-span-2">
+            <BentoCard className="text-center">
+              <p className="text-sm font-semibold text-forest-700 dark:text-cream-200 mb-1">Annual Footprint</p>
               <div className="text-5xl font-display font-black mb-1" style={{ color: scoreColor }}>
                 <AnimatedNumber value={total} suffix=" kg" />
               </div>
               <div className="text-sm font-semibold mb-3" style={{ color: scoreColor }}>
                 <span aria-hidden="true">{scoreLabel.emoji}</span> {scoreLabel.text}
               </div>
-              <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1 text-left">
+              <div className="text-xs text-forest-700 dark:text-cream-200 mb-1 text-left">
                 vs India average ({BENCHMARKS.india.toLocaleString()} kg)
               </div>
-              <div className="h-3 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
+              <div className="h-3 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden" role="progressbar" aria-valuenow={total} aria-valuemax={10000} aria-label="Footprint vs 10,000 kg scale">
                 <motion.div
                   className="h-full rounded-full"
                   style={{ backgroundColor: scoreColor }}
@@ -142,7 +163,20 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
                   transition={{ duration: 1.2 }}
                 />
               </div>
-              <div className="mt-3 text-xs text-forest-700/60 dark:text-cream-200/50">
+
+              {/* Real-world equivalents */}
+              <div className="grid grid-cols-3 gap-2 mt-4" aria-label="What this footprint means">
+                {EQUIVALENTS.map(eq => (
+                  <div key={eq.emoji} className="text-center p-2 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+                    <div className="text-xl mb-1" aria-hidden="true">{eq.emoji}</div>
+                    <div className="text-xs text-forest-700 dark:text-cream-200 leading-tight">
+                      {eq.text(total)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 text-xs text-forest-700 dark:text-cream-200">
                 <span aria-hidden="true">🌳</span> Requires <strong>{trees}</strong> trees to offset annually
               </div>
             </BentoCard>
@@ -154,7 +188,7 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
             <div className="font-display text-3xl font-bold text-forest-800 dark:text-cream-100">
               {analytics.streak}
             </div>
-            <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mt-1">
+            <div className="text-xs text-forest-700 dark:text-cream-200 mt-1">
               day green streak
             </div>
             {analytics.trend !== 0 && (
@@ -170,17 +204,17 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
             <div className="font-display text-3xl font-bold text-forest-800 dark:text-cream-100">
               {footprintData.dailyAvg}
             </div>
-            <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mt-1">kg CO₂ per day</div>
+            <div className="text-xs text-forest-700 dark:text-cream-200 mt-1">kg CO₂ per day</div>
             {analytics.projectedAnnual && (
-              <div className="mt-2 text-xs text-forest-700/60 dark:text-cream-200/50">
+              <div className="mt-2 text-xs text-forest-700 dark:text-cream-200">
                 Projected: <strong>{analytics.projectedAnnual.toLocaleString()} kg/yr</strong>
               </div>
             )}
           </BentoCard>
 
           {/* Category breakdown pie */}
-          <section aria-label="Carbon footprint breakdown">
-            <BentoCard className="lg:col-span-2">
+          <section aria-label="Carbon footprint breakdown by category" className="lg:col-span-2">
+            <BentoCard>
               {pieData && (
                 <ChartCard
                   type="pie"
@@ -193,28 +227,32 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           </section>
 
           {/* Weekly trend line */}
-          <BentoCard className="lg:col-span-2">
-            <ChartCard
-              type="line"
-              data={trendData}
-              title="Daily Emissions Trend (last 14 days)"
-              options={{ height: 220 }}
-            />
-          </BentoCard>
+          <section aria-label="Weekly CO₂ trend" className="lg:col-span-2">
+            <BentoCard>
+              <ChartCard
+                type="line"
+                data={trendData}
+                title="Daily Emissions Trend (last 14 days)"
+                options={{ height: 220 }}
+              />
+            </BentoCard>
+          </section>
 
           {/* Benchmark bar */}
-          <BentoCard className="lg:col-span-2">
-            <ChartCard
-              type="bar"
-              data={barData}
-              title="You vs. Global Benchmarks"
-              options={{ height: 220, legend: 'none' }}
-            />
-          </BentoCard>
+          <section aria-label="Benchmark comparison" className="lg:col-span-2">
+            <BentoCard>
+              <ChartCard
+                type="bar"
+                data={barData}
+                title="You vs. Global Benchmarks"
+                options={{ height: 220, legend: 'none' }}
+              />
+            </BentoCard>
+          </section>
 
           {/* Category breakdown bars */}
-          <section aria-label="Category emissions breakdown">
-            <BentoCard className="lg:col-span-2">
+          <section aria-label="Category emissions breakdown" className="lg:col-span-2">
+            <BentoCard>
               <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
                 Category Breakdown
               </h3>
@@ -230,14 +268,14 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
                           <span className="text-forest-800 dark:text-cream-100 font-medium">
                             <span aria-hidden="true">{meta?.emoji}</span> {meta?.label}
                           </span>
-                          <span className="text-forest-700/70 dark:text-cream-200/60">
+                          <span className="text-forest-700 dark:text-cream-200">
                             {val.toLocaleString()} kg ({pct}%)
                           </span>
                         </div>
                         <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden">
                           <motion.div
                             className="h-full rounded-full"
-                            style={{ backgroundColor: meta?.color || '#2d5016' }}
+                            style={{ backgroundColor: meta?.color || '#0f3d26' }}
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ duration: 0.8, delay: 0.2 }}
@@ -251,49 +289,96 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           </section>
 
           {/* Top 3 quick wins */}
-          <BentoCard className="lg:col-span-2">
-            <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-              <span aria-hidden="true">⚡</span> Top 3 Quick Wins
-            </h3>
-            <div className="space-y-3">
-              {tips.map((tip, i) => (
-                <TipCard key={i} tip={tip} index={i} />
-              ))}
-            </div>
-          </BentoCard>
+          <section aria-label="Top 3 recommended actions" className="lg:col-span-2">
+            <BentoCard>
+              <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
+                <span aria-hidden="true">⚡</span> Top 3 Quick Wins
+              </h3>
+              <div className="space-y-3">
+                {tips.map((tip, i) => (
+                  <TipCard key={i} tip={tip} index={i} />
+                ))}
+              </div>
+            </BentoCard>
+          </section>
 
           {/* Achievement badges */}
-          <BentoCard className="lg:col-span-2">
-            <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
-              <span aria-hidden="true">🏆</span> Achievements
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { icon: '🌱', title: 'First Step',    desc: 'Completed the quiz',  unlocked: true },
-                { icon: '🔥', title: 'Green Week',    desc: '7-day streak',        unlocked: analytics.streak >= 7 },
-                { icon: '🥗', title: 'Diet Hero',     desc: '5 vegan meal days',   unlocked: false },
-                { icon: '✂️', title: 'Carbon Cutter', desc: '10% reduction',       unlocked: false },
-              ].map((badge) => (
-                <div
-                  key={badge.title}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    badge.unlocked
-                      ? 'border-gold-500/50 bg-gold-500/10 dark:bg-gold-500/5'
-                      : 'border-forest-800/10 dark:border-cream-100/10 opacity-50 grayscale'
-                  }`}
-                >
-                  <span className="text-2xl" aria-hidden="true">{badge.icon}</span>
-                  <div>
-                    <div className="text-xs font-semibold text-forest-800 dark:text-cream-100">{badge.title}</div>
-                    <div className="text-xs text-forest-700/60 dark:text-cream-200/50">{badge.desc}</div>
+          <section aria-label="Achievements" className="lg:col-span-2">
+            <BentoCard>
+              <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
+                <span aria-hidden="true">🏆</span> Achievements
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: '🌱', title: 'First Step',    desc: 'Completed the quiz',  unlocked: true },
+                  { icon: '🔥', title: 'Green Week',    desc: '7-day streak',        unlocked: analytics.streak >= 7 },
+                  { icon: '🥗', title: 'Diet Hero',     desc: '5 vegan meal days',   unlocked: false },
+                  { icon: '✂️', title: 'Carbon Cutter', desc: '10% reduction',       unlocked: false },
+                ].map((badge) => (
+                  <div
+                    key={badge.title}
+                    role="img"
+                    aria-label={`Achievement: ${badge.title} — ${badge.desc}${badge.unlocked ? ' (unlocked)' : ' (locked)'}`}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      badge.unlocked
+                        ? 'border-gold-500/50 bg-gold-500/10 dark:bg-gold-500/5'
+                        : 'border-forest-800/10 dark:border-cream-100/10 opacity-50 grayscale'
+                    }`}
+                  >
+                    <span className="text-2xl" aria-hidden="true">{badge.icon}</span>
+                    <div>
+                      <div className="text-xs font-semibold text-forest-800 dark:text-cream-100">{badge.title}</div>
+                      <div className="text-xs text-forest-700 dark:text-cream-200">{badge.desc}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </BentoCard>
+                ))}
+              </div>
+            </BentoCard>
+          </section>
+
+          {/* About the Science */}
+          <section aria-label="Methodology" className="lg:col-span-4">
+            <BentoCard>
+              <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-3 text-sm">
+                <span aria-hidden="true">🔬</span> How we calculate your footprint
+              </h3>
+              <p className="text-sm text-forest-700 dark:text-cream-200 mb-3">
+                EcoTrace uses peer-reviewed emission factors from three authoritative sources:
+              </p>
+              <ul className="grid sm:grid-cols-3 gap-3 text-sm">
+                <li className="flex items-start gap-2 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+                  <span aria-hidden="true">🌍</span>
+                  <span><strong>IPCC AR6</strong> — transport &amp; diet factors</span>
+                </li>
+                <li className="flex items-start gap-2 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+                  <span aria-hidden="true">🏭</span>
+                  <span><strong>US EPA 2023</strong> — waste &amp; shopping factors</span>
+                </li>
+                <li className="flex items-start gap-2 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5">
+                  <span aria-hidden="true">⚡</span>
+                  <span><strong>India CEA 2023</strong> — grid: 0.82 kg CO₂/kWh</span>
+                </li>
+              </ul>
+              <p className="text-xs text-forest-700 dark:text-cream-200 mt-3">
+                Benchmarked against: India avg 1,900 kg/yr · Global avg 4,700 kg/yr · Paris 1.5°C target 2,300 kg/yr
+              </p>
+            </BentoCard>
+          </section>
 
         </div>
       </div>
     </div>
   );
 }
+
+Dashboard.propTypes = {
+  footprintData: PropTypes.shape({
+    total: PropTypes.number,
+    breakdown: PropTypes.object,
+    trees: PropTypes.number,
+    dailyAvg: PropTypes.number,
+  }),
+  logs: PropTypes.array,
+  setCurrentPage: PropTypes.func,
+};
+
