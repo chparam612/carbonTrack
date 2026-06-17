@@ -1,18 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CATEGORY_META } from '../data/emissionFactors.js';
-
-const DIFFICULTY_COLORS = {
-  easy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  hard: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-};
-
-const TIME_LABELS = {
-  immediate: '⚡ Immediate',
-  weeks: '📅 Weeks',
-  months: '🗓️ Months',
-};
+import { DIFFICULTY_COLORS, TIME_LABELS } from '../utils/constants.js';
 
 export default function TipCard({ tip, index, showSaving = false }) {
   const meta = CATEGORY_META[tip.category];
@@ -25,10 +14,10 @@ export default function TipCard({ tip, index, showSaving = false }) {
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.08 }}
-      className="flex items-start gap-3 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5 
+      className="flex items-start gap-3 p-3 rounded-xl bg-forest-800/5 dark:bg-cream-100/5
                  border border-forest-800/10 dark:border-cream-100/10"
     >
-      <div className="w-8 h-8 rounded-lg bg-forest-800/10 dark:bg-cream-100/10 
+      <div className="w-8 h-8 rounded-lg bg-forest-800/10 dark:bg-cream-100/10
                       flex items-center justify-center text-base shrink-0 mt-0.5">
         {meta?.emoji || '💡'}
       </div>

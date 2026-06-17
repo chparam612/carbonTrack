@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QUIZ_STEPS } from '../data/quizQuestions.js';
 import { calculateFootprint } from '../algorithms/carbonCalculator.js';
 import { BENCHMARKS } from '../data/emissionFactors.js';
+import { getScoreColor, getScoreLabel } from '../utils/scoring.js';
 
 // Speedometer gauge SVG
 function CO2Gauge({ value, max = 10000 }) {
@@ -12,9 +13,7 @@ function CO2Gauge({ value, max = 10000 }) {
 
   return (
     <svg viewBox="0 0 200 120" className="w-48 mx-auto" aria-hidden="true">
-      {/* Background arc */}
       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round" />
-      {/* Colored arc */}
       <motion.path
         d="M 20 100 A 80 80 0 0 1 180 100"
         fill="none" stroke={color} strokeWidth="12" strokeLinecap="round"
@@ -23,7 +22,6 @@ function CO2Gauge({ value, max = 10000 }) {
         animate={{ strokeDashoffset: 251 - 251 * pct }}
         transition={{ duration: 1.5, ease: 'easeOut' }}
       />
-      {/* Needle */}
       <motion.line
         x1="100" y1="100" x2="100" y2="30"
         stroke={color} strokeWidth="3" strokeLinecap="round"
@@ -33,7 +31,6 @@ function CO2Gauge({ value, max = 10000 }) {
         transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
       />
       <circle cx="100" cy="100" r="5" fill={color} />
-      {/* Value */}
       <text x="100" y="115" textAnchor="middle" fontSize="11" fill={color} fontWeight="bold">
         {value.toLocaleString()} kg
       </text>
@@ -41,11 +38,10 @@ function CO2Gauge({ value, max = 10000 }) {
   );
 }
 
-// Result reveal screen
 function ResultScreen({ result, onContinue }) {
-  const { total, breakdown, benchmarkDiff, trees } = result;
-  const scoreColor = total < BENCHMARKS.india ? '#2d5016' : total < BENCHMARKS.target ? '#DAA520' : '#ef4444';
-  const scoreLabel = total < BENCHMARKS.india ? 'Eco Champion 🌟' : total < BENCHMARKS.target ? 'On Track 👍' : total < BENCHMARKS.global ? 'Room to Improve 📈' : 'Needs Attention ⚠️';
+  const { total, trees } = result;
+  const scoreColor = getScoreColor(total);
+  const { text: labelText, emoji: labelEmoji } = getScoreLabel(total);
 
   return (
     <motion.div
@@ -69,15 +65,16 @@ function ResultScreen({ result, onContinue }) {
         <div className="text-4xl font-display font-black mb-1" style={{ color: scoreColor }}>
           {total.toLocaleString()} kg CO₂
         </div>
-        <div className="font-semibold text-lg mb-3" style={{ color: scoreColor }}>{scoreLabel}</div>
+        <div className="font-semibold text-lg mb-3" style={{ color: scoreColor }}>
+          <span aria-hidden="true">{labelEmoji}</span> {labelText}
+        </div>
 
-        {/* Benchmark bars */}
         <div className="space-y-2 text-left mt-4">
           {[
-            { label: 'You', value: total, color: scoreColor },
-            { label: 'India avg', value: BENCHMARKS.india, color: '#2d5016' },
-            { label: 'Paris target', value: BENCHMARKS.target, color: '#DAA520' },
-            { label: 'Global avg', value: BENCHMARKS.global, color: '#D2691E' },
+            { label: 'You',           value: total,            color: scoreColor },
+            { label: 'India avg',     value: BENCHMARKS.india,  color: '#2d5016' },
+            { label: 'Paris target',  value: BENCHMARKS.target, color: '#DAA520' },
+            { label: 'Global avg',    value: BENCHMARKS.global, color: '#D2691E' },
           ].map((b) => (
             <div key={b.label}>
               <div className="flex justify-between text-xs mb-0.5">
@@ -98,7 +95,6 @@ function ResultScreen({ result, onContinue }) {
         </div>
       </motion.div>
 
-      {/* Tree equivalent */}
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
         className="glass-card p-3 mb-6 flex items-center gap-3"
@@ -153,7 +149,6 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
       setDirection(1);
       setStep(step + 1);
     } else {
-      // Final step — calculate
       const res = calculateFootprint(answers);
       setResult(res);
       setFootprintData(res);
@@ -174,10 +169,7 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
   if (result) {
     return (
       <div className="min-h-screen pt-24 pb-16 bg-cream-100 dark:bg-forest-900">
-        <ResultScreen
-          result={result}
-          onContinue={() => setCurrentPage('dashboard')}
-        />
+        <ResultScreen result={result} onContinue={() => setCurrentPage('dashboard')} />
       </div>
     );
   }
@@ -193,14 +185,19 @@ export default function Quiz({ setCurrentPage, setFootprintData }) {
             <span>Step {step + 1} of {QUIZ_STEPS.length}</span>
             <span>{Math.round(progress)}% complete</span>
           </div>
-          <div className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className="h-2.5 bg-forest-800/10 dark:bg-cream-100/10 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <motion.div
               className="h-full progress-plant"
               animate={{ width: `${((step + 0.5) / QUIZ_STEPS.length) * 100}%` }}
               transition={{ duration: 0.5 }}
             />
           </div>
-          {/* Step dots */}
           <div className="flex justify-between mt-2" aria-hidden="true">
             {QUIZ_STEPS.map((s, i) => (
               <div

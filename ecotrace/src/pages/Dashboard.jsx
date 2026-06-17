@@ -2,23 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ChartCard from '../components/ChartCard.jsx';
 import TipCard from '../components/TipCard.jsx';
+import EmptyState from '../components/EmptyState.jsx';
 import { BENCHMARKS, CATEGORY_META } from '../data/emissionFactors.js';
-import { rankTips } from '../algorithms/tipRanker.js';
+import { getTopTips } from '../algorithms/tipRanker.js';
 import { analyzeProgress } from '../algorithms/progressAnalyzer.js';
-
-const SCORE_COLOR = (total) => {
-  if (total < BENCHMARKS.india) return '#2d5016';
-  if (total < BENCHMARKS.target) return '#DAA520';
-  if (total < BENCHMARKS.global) return '#D2691E';
-  return '#ef4444';
-};
-
-const SCORE_LABEL = (total) => {
-  if (total < BENCHMARKS.india) return { text: 'Eco Champion', emoji: '🌟' };
-  if (total < BENCHMARKS.target) return { text: 'On Track', emoji: '👍' };
-  if (total < BENCHMARKS.global) return { text: 'Average', emoji: '📊' };
-  return { text: 'High Impact', emoji: '⚠️' };
-};
+import { getScoreColor, getScoreLabel } from '../utils/scoring.js';
 
 function BentoCard({ children, className = '', span = '' }) {
   return (
@@ -61,26 +49,24 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
   const breakdown = footprintData?.breakdown || {};
   const trees = footprintData?.trees || 0;
 
-  const tips = hasData ? rankTips(breakdown, 3) : [];
+  // getTopTips accepts the full footprintData object (flat keys + total)
+  const tips = hasData ? getTopTips(footprintData, 3) : [];
   const analytics = analyzeProgress(logs);
 
-  // Pie chart data
   const pieData = hasData ? [
     ['Category', 'kg CO₂'],
     ...Object.entries(breakdown).map(([k, v]) => [CATEGORY_META[k]?.label || k, v]),
   ] : null;
 
-  // Benchmark bar data
   const barData = [
     ['', 'kg CO₂/year', { role: 'style' }],
-    ['You', total, '#2d5016'],
-    ['India avg', BENCHMARKS.india, '#8B4513'],
+    ['You',          total,            '#2d5016'],
+    ['India avg',    BENCHMARKS.india,  '#8B4513'],
     ['Paris target', BENCHMARKS.target, '#DAA520'],
-    ['Global avg', BENCHMARKS.global, '#D2691E'],
-    ['EU avg', BENCHMARKS.eu, '#ef4444'],
+    ['Global avg',   BENCHMARKS.global, '#D2691E'],
+    ['EU avg',       BENCHMARKS.eu,     '#ef4444'],
   ];
 
-  // Weekly trend (last 14 days of logs or mock)
   const trendData = (() => {
     if (logs.length >= 2) {
       const sorted = [...logs].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-14);
@@ -89,7 +75,6 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
         ...sorted.map((l, i) => [l.date.slice(5), l.total, analytics.movingAvg[i]?.avg || l.total]),
       ];
     }
-    // Demo data
     const today = new Date();
     return [
       ['Date', 'Daily CO₂'],
@@ -101,35 +86,23 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
     ];
   })();
 
-  const scoreColor = SCORE_COLOR(total);
-  const scoreLabel = SCORE_LABEL(total);
+  const scoreColor = getScoreColor(total);
+  const scoreLabel = getScoreLabel(total);
 
   if (!hasData) {
     return (
-      <div className="min-h-screen pt-24 pb-16 px-4 bg-cream-100 dark:bg-forest-900 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center glass-card p-10 max-w-sm mx-auto"
+      <EmptyState
+        icon="📊"
+        title="No Footprint Data"
+        description="Complete the 5-step quiz to calculate your annual CO₂ footprint and unlock your personalised dashboard. Takes about 2 minutes ⏱️"
+      >
+        <button
+          onClick={() => setCurrentPage?.('quiz')}
+          className="btn-primary w-full text-base py-4"
         >
-          <span className="text-6xl block mb-4" aria-hidden="true">📊</span>
-          <h2 className="font-display text-2xl font-bold text-forest-800 dark:text-cream-100 mb-2">
-            No Footprint Data
-          </h2>
-          <p className="text-forest-700/70 dark:text-cream-200/60 mb-2 text-sm leading-relaxed">
-            Complete the 5-step quiz to calculate your annual CO₂ footprint and unlock your personalised dashboard.
-          </p>
-          <p className="text-forest-700/50 dark:text-cream-200/40 mb-6 text-xs">
-            Takes about 2 minutes <span aria-hidden="true">⏱️</span>
-          </p>
-          <button
-            onClick={() => setCurrentPage?.('quiz')}
-            className="btn-primary w-full text-base py-4"
-          >
-            <span aria-hidden="true">🌿</span> Take the Quiz
-          </button>
-        </motion.div>
-      </div>
+          <span aria-hidden="true">🌿</span> Take the Quiz
+        </button>
+      </EmptyState>
     );
   }
 
@@ -145,10 +118,9 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
           </p>
         </motion.div>
 
-        {/* Bento grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-auto">
 
-          {/* Total Score — spans 2 cols */}
+          {/* Total Score */}
           <section aria-label="Carbon footprint summary">
             <BentoCard className="lg:col-span-2 text-center" span="">
               <p className="text-sm font-semibold text-forest-700/70 dark:text-cream-200/50 mb-1">Annual Footprint</p>
@@ -158,7 +130,6 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
               <div className="text-sm font-semibold mb-3" style={{ color: scoreColor }}>
                 <span aria-hidden="true">{scoreLabel.emoji}</span> {scoreLabel.text}
               </div>
-              {/* Mini progress vs India avg */}
               <div className="text-xs text-forest-700/60 dark:text-cream-200/50 mb-1 text-left">
                 vs India average ({BENCHMARKS.india.toLocaleString()} kg)
               </div>
@@ -291,17 +262,17 @@ export default function Dashboard({ footprintData, logs = [], setCurrentPage }) 
             </div>
           </BentoCard>
 
-          {/* Achievement badges preview */}
+          {/* Achievement badges */}
           <BentoCard className="lg:col-span-2">
             <h3 className="font-display font-semibold text-forest-800 dark:text-cream-100 mb-4 text-sm">
               <span aria-hidden="true">🏆</span> Achievements
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: '🌱', title: 'First Step', desc: 'Completed the quiz', unlocked: true },
-                { icon: '🔥', title: 'Green Week', desc: '7-day streak', unlocked: analytics.streak >= 7 },
-                { icon: '🥗', title: 'Diet Hero', desc: '5 vegan meal days', unlocked: false },
-                { icon: '✂️', title: 'Carbon Cutter', desc: '10% reduction', unlocked: false },
+                { icon: '🌱', title: 'First Step',    desc: 'Completed the quiz',  unlocked: true },
+                { icon: '🔥', title: 'Green Week',    desc: '7-day streak',        unlocked: analytics.streak >= 7 },
+                { icon: '🥗', title: 'Diet Hero',     desc: '5 vegan meal days',   unlocked: false },
+                { icon: '✂️', title: 'Carbon Cutter', desc: '10% reduction',       unlocked: false },
               ].map((badge) => (
                 <div
                   key={badge.title}

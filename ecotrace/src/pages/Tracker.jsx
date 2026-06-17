@@ -4,6 +4,7 @@ import ActivityForm from '../components/ActivityForm.jsx';
 import { calculateDailyLog } from '../algorithms/carbonCalculator.js';
 import { CATEGORY_META } from '../data/emissionFactors.js';
 import { useFirestore } from '../hooks/useFirestore.js';
+import { getDailyColor, getLogColor } from '../utils/scoring.js';
 
 const CATEGORIES = ['transport', 'diet', 'energy', 'shopping', 'waste'];
 
@@ -53,24 +54,17 @@ export default function Tracker({ onLogsUpdate }) {
 
   const { total, breakdown } = calculateDailyLog(entries);
 
-  // Load past logs on mount and when Firebase becomes ready
   useEffect(() => {
     if (!ready) return;
     getLogs(7).then((fetchedLogs) => {
       setPastLogs(fetchedLogs);
       onLogsUpdate?.(fetchedLogs);
     });
-  // onLogsUpdate is a stable setter from parent — safe to omit from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, getLogs]);
 
-  const addEntry = (entry) => {
-    setEntries((prev) => [...prev, entry]);
-  };
-
-  const removeEntry = (idx) => {
-    setEntries((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const addEntry = (entry) => setEntries((prev) => [...prev, entry]);
+  const removeEntry = (idx) => setEntries((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
     if (entries.length === 0) return;
@@ -84,7 +78,7 @@ export default function Tracker({ onLogsUpdate }) {
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const co2Color = total < 5 ? '#2d5016' : total < 12 ? '#DAA520' : '#ef4444';
+  const co2Color = getDailyColor(total);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 bg-cream-100 dark:bg-forest-900">
@@ -109,7 +103,6 @@ export default function Tracker({ onLogsUpdate }) {
             <div className="font-display text-5xl font-black mb-1" style={{ color: co2Color }}>
               {total.toFixed(2)} kg
             </div>
-            {/* Category mini bars */}
             {total > 0 && (
               <div className="flex gap-1 mt-3 h-2 rounded-full overflow-hidden" aria-hidden="true">
                 {Object.entries(breakdown).map(([cat, val]) => {
@@ -192,7 +185,7 @@ export default function Tracker({ onLogsUpdate }) {
               {[...pastLogs]
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .map((log, i) => {
-                  const logColor = log.total < 8 ? '#2d5016' : log.total < 15 ? '#DAA520' : '#ef4444';
+                  const logColor = getLogColor(log.total);
                   return (
                     <motion.div
                       key={log.date}
